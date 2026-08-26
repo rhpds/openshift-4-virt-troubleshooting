@@ -84,16 +84,16 @@ Automation must provision, per module:
 
 ## Infrastructure Requirements
 
-- **Cloud provider:** TBD — confirmed in infrastructure phase
-- **Cluster type:** TBD — confirmed in infrastructure phase
-- **OCP version:** TBD — confirmed in infrastructure phase
-- **Topology:** TBD — confirmed in infrastructure phase
-- **Sizing:** TBD — confirmed in infrastructure phase
-- **Automation approach:** TBD — confirmed in infrastructure phase
-- **AI/MaaS:** TBD — confirmed in infrastructure phase
-- **External services:** TBD — confirmed in infrastructure phase
-- **AAP version:** TBD — confirmed in infrastructure phase
-- **Non-GA products:** TBD — confirmed in infrastructure phase
+- **Cloud provider:** CNV (OcpSandbox pattern)
+- **Cluster type:** Multinode
+- **OCP version:** 5.0 (non-GA at time of authoring — see Non-GA products below)
+- **Topology:** Shared-cluster — 2 clusters, 15 users per cluster (30 students total)
+- **Sizing:** Control plane: 3 × 16 vCPU / 32Gi RAM. Workers: 3 × 16 vCPU / 64Gi RAM / 100GB disk (per cluster)
+- **Automation approach:** GitOps (Helm + ArgoCD)
+- **AI/MaaS:** None required from this CI. OpenShift Lightspeed (`ocp4_workload_ols`, existing role) uses an external Azure-managed service — not a model deployed by lab automation
+- **External services:** `registry.redhat.io` / `registry.access.redhat.com` (container image pulls); the external Azure-managed OpenShift Lightspeed backend used by `ocp4_workload_ols`
+- **AAP version:** N/A — Ansible Automation Platform is not a product in this lab
+- **Non-GA products:** Red Hat OpenShift Container Platform 5.x (pre-GA at time of authoring). Access plan: TBD — pending confirmation of OCP 5 availability on the CNV pool
 
 ## Assessment Strategy (Optional)
 
