@@ -84,7 +84,7 @@ spec:
     non_ga_access_plan: "TBD — pending confirmation of OCP 5 availability on the CNV pool"             # how access is provided for non-GA products
     external_services:              # named external service dependencies e.g. [github.com]
       - "registry.redhat.io / registry.access.redhat.com (container image pulls)"
-      - "External Azure-managed OpenShift Lightspeed backend (used by ocp4_workload_ols)"
+      - "llm-gpt4-lightspeed.cognitiveservices.azure.com (Azure OpenAI, backing ocp4_workload_ols)"
     gpu_nodes: 0                       # number of GPU nodes (0 = none)
     gpu_type: ""                       # e.g. NVIDIA A100 40GB (required if gpu_nodes > 0)
   duration_hours: 2

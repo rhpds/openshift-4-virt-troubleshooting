@@ -91,7 +91,7 @@ Automation must provision, per module:
 - **Sizing:** Control plane: 3 × 16 vCPU / 32Gi RAM. Workers: 3 × 16 vCPU / 64Gi RAM / 100GB disk (per cluster)
 - **Automation approach:** GitOps (Helm + ArgoCD)
 - **AI/MaaS:** None required from this CI. OpenShift Lightspeed (`ocp4_workload_ols`, existing role) uses an external Azure-managed service — not a model deployed by lab automation
-- **External services:** `registry.redhat.io` / `registry.access.redhat.com` (container image pulls); the external Azure-managed OpenShift Lightspeed backend used by `ocp4_workload_ols`
+- **External services:** `registry.redhat.io` / `registry.access.redhat.com` (container image pulls); `llm-gpt4-lightspeed.cognitiveservices.azure.com` (Azure OpenAI, backing `ocp4_workload_ols`)
 - **AAP version:** N/A — Ansible Automation Platform is not a product in this lab
 - **Non-GA products:** Red Hat OpenShift Container Platform 5.x (pre-GA at time of authoring). Access plan: TBD — pending confirmation of OCP 5 availability on the CNV pool
 
