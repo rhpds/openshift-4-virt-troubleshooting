@@ -109,12 +109,54 @@ approval_checklist:
 
   content:
     prerequisites_verifiable: false
-    assessment_strategy: ""
-    catalog_gap: ""
-    design_overview: ""
-    module_summaries: []
-    rcars_overlap_pct: null
-    rcars_top_matches: []
+    assessment_strategy: "Trust-based for most modules — students validate fixes visually via cluster state and console output. Module 5 uses a self-completed readiness checklist; Module 6 is a guided Arcade simulation with built-in progression checks."
+    catalog_gap: "Existing catalog labs cover pieces of this design (UDN isolation, resource observability/right-sizing, MTV migration, RHACM multi-cluster management) but none combine OpenShift Lightspeed AI-assisted sizing and troubleshooting with UDN isolation and migration readiness assessment in a single intermediate-level, ~2-hour flow. This lab also evolves the existing openshift-cnv.ocp-virt-roadshow-2026 base pattern rather than duplicating it."
+    design_overview: "A 2-hour intermediate hands-on lab where attendees troubleshoot a connectivity/infrastructure issue in an OpenShift Virtualization environment using AI-assisted capabilities (OpenShift Lightspeed), then apply UDN network isolation, right-size VM resources via built-in observability, and finish by assessing a second cluster's migration readiness and performing a guided cross-cluster VM migration simulation with MTV."
+    module_summaries:
+      - title: "AI-Assisted Sizing"
+        overview: "Student translates a simulated VMware estate into an OpenShift Virtualization cluster size using Lightspeed, then validates against Red Hat sizing guidance."
+      - title: "AI-Assisted Troubleshooting"
+        overview: "A VM workload is down; student uses Lightspeed plus events/logs/conditions to find and fix the root cause, then proves recovery."
+      - title: "Networking Troubleshooting and Isolation"
+        overview: "Student identifies an unwanted VM-to-service connectivity issue and implements UDN to enforce proper network segmentation."
+      - title: "Resource Observability and Troubleshooting"
+        overview: "Student uses OCP console dashboards to find and right-size an over-provisioned VM, then creates a PrometheusRule alert for memory threshold."
+      - title: "Migration Readiness Assessment"
+        overview: "Student profiles a second cluster's node capacity, storage classes, CSI snapshot support, network CNI type, and VM guest OS compatibility to produce a go/no-go migration recommendation."
+      - title: "Workload Migration"
+        overview: "Guided interactive (Arcade) simulation of a cross-cluster VM migration using MTV."
+    rcars_overlap_pct: 82
+    rcars_top_matches:
+      - title: "Experience OpenShift Virtualization: Advanced Operations and Automation"
+        ci_name: "openshift-cnv.ocp-virt-advanced-ops.prod"
+        url: "https://catalog.demo.redhat.com/catalog?item=openshift-cnv.ocp-virt-advanced-ops.prod"
+        relevance_score: 82
+        why_it_fits: "Covers User Defined Networks (UDN) for network isolation, VM performance observability and resource right-sizing, and multi-cluster VM management within an OpenShift Virtualization context."
+      - title: "Experience OpenShift Virtualization: Advanced Operations and Automation - Shared RHACM HUB"
+        ci_name: "openshift-cnv.ocp-virt-advanced-ops-hub.prod"
+        url: "https://catalog.demo.redhat.com/catalog?item=openshift-cnv.ocp-virt-advanced-ops-hub.prod"
+        relevance_score: 80
+        why_it_fits: "Covers UDN for VM network isolation, KubeVirt metrics/PromQL-based resource observability, and multi-cluster VM management with RHACM."
+      - title: "LB1839 - Beyond the basics: Operationalizing Red Hat OpenShift Virtualization"
+        ci_name: "summit-2026.lb1839-balance-virt-fallback.prod"
+        url: "https://catalog.demo.redhat.com/catalog?item=summit-2026.lb1839-balance-virt-fallback.prod"
+        relevance_score: 72
+        why_it_fits: "Covers OpenShift Virtualization, Migration Toolkit for Virtualization, cross-cluster VM migration, and resource management with hands-on operational depth on migration readiness and right-sizing."
+        workloads:
+          - role: "ocp4_workload_authentication"
+            collection: "agnosticd.core_workloads"
+          - role: "ocp4_workload_cert_manager"
+            collection: "agnosticd.core_workloads"
+          - role: "ocp4_workload_external_odf"
+            collection: "agnosticd.core_workloads"
+          - role: "ocp4_workload_gitops_bootstrap"
+            collection: "agnosticd.core_workloads"
+          - role: "ocp4_workload_ocp_console_embed"
+            collection: "agnosticd.showroom"
+          - role: "ocp4_workload_openshift_gitops"
+            collection: "agnosticd.core_workloads"
+          - role: "ocp4_workload_showroom"
+            collection: "agnosticd.showroom"
     rejections: []
 
   infra:
