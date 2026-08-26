@@ -3,18 +3,16 @@ kind: Component
 metadata:
   name: openshift-5-virt
   title: openshift-5-virt
-  description: "This hands-on lab puts attendees into a realistic customer
-    environment running virtual machines and container workloads across
-    OpenShift. They will investigate a connectivity and infrastructure issue,
-    use OpenShift 5 AI-assisted capabilities to help with troubleshooting,
-    validate the findings against real cluster data, and implement the
-    appropriate fix.  The lab will also cover areas that have improved from
-    OpenShift 4, including virtual machine networking, observability, resource
-    optimisation, cluster management and workload mobility. Attendees will then
-    assess a second cluster and perform a controlled workload migration.  The
-    focus is on practical consulting skills rather than a product walkthrough:
-    understand the problem, gather evidence, make the change and prove the
-    outcome. "
+  description: 'This hands-on lab puts attendees into a realistic customer environment
+    running virtual machines and container workloads across OpenShift. They will investigate
+    a connectivity and infrastructure issue, use OpenShift 5 AI-assisted capabilities
+    to help with troubleshooting, validate the findings against real cluster data,
+    and implement the appropriate fix.  The lab will also cover areas that have improved
+    from OpenShift 4, including virtual machine networking, observability, resource
+    optimisation, cluster management and workload mobility. Attendees will then assess
+    a second cluster and perform a controlled workload migration.  The focus is on
+    practical consulting skills rather than a product walkthrough: understand the
+    problem, gather evidence, make the change and prove the outcome. '
   annotations:
     ph.rhdp.io/content-type: lab
     ph.rhdp.io/deployment-mode: rhdp_published
@@ -22,21 +20,24 @@ metadata:
     ph.rhdp.io/owner: jboeselm@redhat.com
     backstage.io/techdocs-ref: dir:.
     github.com/project-slug: rhpds/openshift-5-virt
-    ph.rhdp.io/created-at: 2026-08-24T13:44:36.426Z
+    ph.rhdp.io/created-at: 2026-08-24 13:44:36.426000+00:00
   tags:
-    - publishing-house
-    - lab
-    - rhdp-published
+  - publishing-house
+  - lab
+  - rhdp-published
   links:
-    - url: https://github.com/rhpds/openshift-5-virt
-      title: Repository
-      icon: github
-    - url: https://devspaces.apps.ocpv-infra02.wdc07.infra.demo.redhat.com#https://github.com/rhpds/openshift-5-virt
-      title: Open in DevSpaces
-      icon: catalog
-    - url: https://central-api-publishing-house.apps.ocpv-infra02.wdc07.infra.demo.redhat.com
-      title: Central
-      icon: dashboard
+  - url: https://github.com/rhpds/openshift-5-virt
+    title: Repository
+    icon: github
+  - url: https://devspaces.apps.ocpv-infra02.wdc07.infra.demo.redhat.com#https://github.com/rhpds/openshift-5-virt
+    title: Open in DevSpaces
+    icon: catalog
+  - url: https://central-api-publishing-house.apps.ocpv-infra02.wdc07.infra.demo.redhat.com
+    title: Central
+    icon: dashboard
+  - url: https://redhat.atlassian.net/browse/RHDPCD-1220
+    title: Jira Epic
+    icon: dashboard
 spec:
   type: content
   lifecycle: experimental

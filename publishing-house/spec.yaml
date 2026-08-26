@@ -16,8 +16,8 @@ project:
   automation_type: "gitops"
   description: "This hands-on lab puts attendees into a realistic customer environment running virtual machines and container workloads across OpenShift. They will investigate a connectivity and infrastructure issue, use OpenShift 5 AI-assisted capabilities to help with troubleshooting, validate the findings against real cluster data, and implement the appropriate fix.  The lab will also cover areas that have improved from OpenShift 4, including virtual machine networking, observability, resource optimisation, cluster management and workload mobility. Attendees will then assess a second cluster and perform a controlled workload migration.  The focus is on practical consulting skills rather than a product walkthrough: understand the problem, gather evidence, make the change and prove the outcome. "
   # content_reviewer_email and infra_reviewer_email are assigned by the RHDP team — not set by the author
-  jira_ticket: ""
-  workflow_id: ""
+  jira_ticket: "RHDPCD-1220"
+  workflow_id: "f27392bf-2e90-4efe-b7a3-501af7d4eb52"
 
 spec:
   title: ""
