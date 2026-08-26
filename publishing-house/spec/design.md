@@ -1,4 +1,4 @@
-# [Project Title]
+# OpenShift 5 Virtualization in Practice: Troubleshooting, Networking & Workload Mobility
 
 <!-- This file is the design document for your lab or demo. -->
 <!-- Fill in each section below, or run /rhdp-publishing-house to have the intake skill help. -->
@@ -7,83 +7,102 @@
 
 ## Overview
 
-[2-3 sentences on what this lab or demo is and why it exists. Then a direct description of what participants will do — specific enough that someone reading this section immediately understands the content without interpretation. No flowery language. Example: "Participants will deploy a 3-tier application on OpenShift, configure autoscaling, and troubleshoot a simulated pod failure."]
+This hands-on lab puts attendees into a realistic customer environment running virtual machines and container workloads across OpenShift. Participants will investigate a connectivity and infrastructure issue, use OpenShift 5 AI-assisted capabilities (OpenShift Lightspeed) to help troubleshoot, validate findings against real cluster data, and implement the appropriate fix. The lab also covers areas improved from OpenShift 4, including virtual machine networking, observability, resource optimization, cluster management, and workload mobility.
+
+Participants will size an OpenShift Virtualization cluster from a simulated VMware estate using AI-assisted capacity planning, diagnose and fix a broken VM workload using Lightspeed, enforce network isolation with UserDefinedNetworks (UDN), right-size an over-provisioned VM using built-in observability, and finish by assessing a second cluster's readiness and performing a guided cross-cluster VM migration simulation using MTV.
 
 ## Target Audience
 
-- **Role:** [Data scientists, platform engineers, developers, etc.]
-- **Experience level:** [Beginner, intermediate, or advanced]
-- **What they already know:** [Existing skills and knowledge]
-- **What they don't know:** [Skills this lab teaches]
+- **Role:** Platform engineers / OpenShift administrators
+- **Experience level:** Intermediate
+- **What they already know:** Core Kubernetes/OpenShift concepts (pods, namespaces, `oc` CLI), general familiarity with virtualization concepts
+- **What they don't know:** OpenShift Virtualization specifics, OCP 5 AI-assisted troubleshooting and sizing workflows, UserDefinedNetworks (UDN), cross-cluster VM migration with MTV
 
 ## Prerequisites
 
-- [What the learner must know or have completed before starting]
-- [Can the lab validate these automatically? Yes/No — brief explanation]
-
-<!-- If no prerequisites, write "None" -->
+- Familiarity with basic OpenShift/Kubernetes concepts (pods, namespaces, `oc` CLI)
+- No prior OpenShift Virtualization experience required
+- Can the lab validate these automatically? No — trust-based, consistent with the intermediate audience level
 
 ## Learning Objectives
 
-1. [Action verb] [specific, measurable outcome]
-2. [Action verb] [specific, measurable outcome]
-3. [Action verb] [specific, measurable outcome]
+1. Configure cluster sizing for an OpenShift Virtualization deployment using AI-assisted capacity planning
+2. Troubleshoot workload failures using AI-assisted diagnostics (OpenShift Lightspeed)
+3. Implement network isolation using UserDefinedNetworks (UDN)
+4. Scale VM resources appropriately using built-in observability
+5. Analyze cluster readiness for workload migration by profiling node capacity, storage compatibility, and network configuration
 
-<!-- Scale to duration: up to 3 objectives per 45 min of content. Start with action verbs: Configure, Deploy, Create, Implement, Troubleshoot, Monitor, Scale. Each should be testable. NOT: Understand, Learn, Know. -->
+<!-- Scaled to a 120-minute lab: 5 objectives across 6 modules, consistent with the up-to-3-per-45-min guideline. -->
 
 ## Content Type
 
-[Lab (hands-on) or Demo (presenter-led)]
+Lab (hands-on)
 
 ## Products & Technologies
 
-- [Official Red Hat product name with version if relevant]
-- [Additional products/technologies]
-
-<!-- Use official names: "Red Hat OpenShift", not "OpenShift". List upstream projects separately. -->
+- Red Hat OpenShift Container Platform (5.x)
+- Red Hat OpenShift Virtualization (CNV)
+- OpenShift Lightspeed
+- Migration Toolkit for Virtualization (MTV)
+- UserDefinedNetworks (UDN)
 
 ## Module Map
 
 | Module | Title | Duration |
 |--------|-------|----------|
-| 1 | [Module title] | [XX min] |
-| 2 | [Module title] | [XX min] |
-| — | **Total hands-on** | **[X hours]** |
-| — | Intro / presentation | [~XX min] |
-| — | **Total lab** | **[~X hours]** |
+| 1 | AI-Assisted Sizing | 30 min |
+| 2 | AI-Assisted Troubleshooting | 30 min |
+| 3 | Networking Troubleshooting and Isolation | 20 min |
+| 4 | Resource Observability and Troubleshooting | 20 min |
+| 5 | Migration Readiness Assessment | 15 min |
+| 6 | Workload Migration | 5 min |
+| — | **Total hands-on** | **120 min** |
+| — | Intro / presentation | ~0 min (fully hands-on) |
+| — | **Total lab** | **~2 hours** |
 
-<!-- Each module 10-30 min. Total: lab 1-4 hours, demo 15-45 min. Modules should build on each other. -->
+<!-- Modules build progressively: size → troubleshoot → isolate → observe/right-size → assess migration readiness → migrate. Each stage depends on cluster state produced by the prior module. -->
 
 ## Difficulty Level
 
-[Beginner, Intermediate, or Advanced]
+Intermediate
 
 ## Environment
 
-**Learner view:** [What exists when the lab starts — pre-deployed resources, what participants see and interact with. Be specific about cluster details.]
+**Learner view:** Each student is given access to a pre-provisioned OpenShift Virtualization cluster seeded with a running VM workload, a simulated ("fake") VMware estate for the sizing exercise, and a pre-configured connectivity issue between VMs and services. Two clusters are provisioned to support the full class, with students split across them.
 
-**Automation needed:** [Yes/No]
+**Automation needed:** Yes.
 
-[If yes, list what automation must provision — operators, per-user resources, sample apps, data sets.]
+Automation must provision, per module:
+- A simulated VMware estate (fake VMware) with defined VM/vCPU/memory/storage counts for the sizing exercise (M1)
+- A broken VM workload for AI-assisted troubleshooting (M2) — exact fault type TBD (see Open Questions)
+- A pre-existing connectivity issue requiring UDN-based isolation (M3)
+- An over-provisioned VM for the observability/right-sizing exercise (M4)
+- A second cluster in a migratable state for the readiness assessment (M5)
+- A guided interactive (Arcade-style) simulation of a cross-cluster VM migration using MTV (M6)
+- Multi-user namespacing/RBAC so each student has an isolated workspace
+- OpenShift Lightspeed available for AI-assisted troubleshooting and sizing (M1, M2)
 
 ## Infrastructure Requirements
 
-- **Cloud provider:** [CNV (default), AWS, or Troshka (bare-metal/nested virt)]
-- **Cluster type:** [Multinode or SNO (Single Node OpenShift)]
-- **OCP version:** [e.g. 4.20 — minimum 4.20]
-- **Topology:** [Shared cluster, per-student, or CNV pool]
-- **Sizing:** [Node types and counts with resources — e.g., "3 control plane (16 CPU, 64GB RAM), 6 workers (8 CPU, 32GB RAM, 100GB disk)"]
-- **Automation approach:** [Ansible, GitOps (Helm + ArgoCD), or combo]
-- **AI/MaaS:** [None, MaaS (open-source model), MaaS (frontier model), or dedicated GPU — include justification if not "none"]
-- **External services:** [Named services — e.g., github.com, registry.access.redhat.com — or "None"]
-- **AAP version:** [e.g. 2.5 — only if AAP is in products; omit otherwise]
-- **Non-GA products:** [Product name + version, with access plan — or "None (all products are GA)"]
-
-<!-- Not all fields must be known at intake. "TBD, estimating ~X" is fine. -->
+- **Cloud provider:** TBD — confirmed in infrastructure phase
+- **Cluster type:** TBD — confirmed in infrastructure phase
+- **OCP version:** TBD — confirmed in infrastructure phase
+- **Topology:** TBD — confirmed in infrastructure phase
+- **Sizing:** TBD — confirmed in infrastructure phase
+- **Automation approach:** TBD — confirmed in infrastructure phase
+- **AI/MaaS:** TBD — confirmed in infrastructure phase
+- **External services:** TBD — confirmed in infrastructure phase
+- **AAP version:** TBD — confirmed in infrastructure phase
+- **Non-GA products:** TBD — confirmed in infrastructure phase
 
 ## Assessment Strategy (Optional)
 
-<!-- Optional — skip this section for demos or classic labs without verification. -->
-<!-- Relevant for Zero-Touch labs with solve/validate buttons or labs with automated checks. -->
+Trust-based for most modules — students validate their own fixes visually via cluster state and console output. Module 5 (Migration Readiness Assessment) uses a checklist the student fills in to produce a go/no-go recommendation. Module 6 (Workload Migration) is a guided interactive simulation (Arcade) with built-in progression checks.
 
-[If applicable: how will we know the learner successfully completed each module? Per module: verification script, solve/validate button, visible result in the UI, or automated check.]
+## Open Questions
+
+<!-- Carried over from source planning doc — resolve during development -->
+
+1. What is the "broken" scenario for Module 2 (AI-Assisted Troubleshooting)? Candidates: misconfigured NetworkPolicy, wrong StorageClass, resource limits causing OOM.
+2. Is UDN GA in OCP 5 at release time? If tech-preview, Module 3 needs a fallback approach.
+3. When will OCP 5 be installable/available on the CNV pool?
