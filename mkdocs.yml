@@ -1,0 +1,15 @@
+site_name: 'OpenShift 5 Virtualization in Practice: Troubleshooting, Networking &
+  Workload Mobility'
+docs_dir: publishing-house/spec
+nav:
+- Home: index.md
+- Design Spec: design.md
+- Modules:
+  - Module 1 - Ai Assisted Sizing: modules/module-01-ai-assisted-sizing.md
+  - Module 2 - Ai Assisted Troubleshooting: modules/module-02-ai-assisted-troubleshooting.md
+  - Module 3 - Networking Troubleshooting And Isolation: modules/module-03-networking-troubleshooting-and-isolation.md
+  - Module 4 - Resource Observability And Troubleshooting: modules/module-04-resource-observability-and-troubleshooting.md
+  - Module 5 - Migration Readiness Assessment: modules/module-05-migration-readiness-assessment.md
+  - Module 6 - Workload Migration: modules/module-06-workload-migration.md
+plugins:
+- techdocs-core
