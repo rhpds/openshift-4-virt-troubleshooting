@@ -1,11 +1,10 @@
-# OpenShift 5 Virtualization in Practice: Troubleshooting, Networking & Workload Mobility
+# OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures
 
 Welcome to the project spec. Use the navigation to browse the design and module outlines.
 
 - [Design Spec](design.md)
-- [Module 1 - Ai Assisted Sizing](modules/module-01-ai-assisted-sizing.md)
-- [Module 2 - Ai Assisted Troubleshooting](modules/module-02-ai-assisted-troubleshooting.md)
-- [Module 3 - Networking Troubleshooting And Isolation](modules/module-03-networking-troubleshooting-and-isolation.md)
-- [Module 4 - Resource Observability And Troubleshooting](modules/module-04-resource-observability-and-troubleshooting.md)
-- [Module 5 - Migration Readiness Assessment](modules/module-05-migration-readiness-assessment.md)
-- [Module 6 - Workload Migration](modules/module-06-workload-migration.md)
+- [Module 1 - VM Stuck in Starting](modules/module-01-vm-stuck-in-starting.md)
+- [Module 2 - CDI Import Failures](modules/module-02-cdi-import-failures.md)
+- [Module 3 - Live Migration Failures](modules/module-03-live-migration-failures.md)
+- [Module 4 - Network Troubleshooting](modules/module-04-network-troubleshooting.md)
+- [Module 5 - Guest Agent Failures](modules/module-05-guest-agent-failures.md)

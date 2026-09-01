@@ -1,38 +1,60 @@
-# OpenShift 5 Virtualization in Practice: Troubleshooting, Networking & Workload Mobility
+# OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures
 
 <!-- This file is the design document for your lab or demo. -->
-<!-- Fill in each section below, or run /rhdp-publishing-house to have the intake skill help. -->
 <!-- Sections marked with [brackets] are placeholders — replace with real content. -->
 <!-- The validation gate checks for all required sections before submission. -->
 
 ## Overview
 
-This hands-on lab puts attendees into a realistic customer environment running virtual machines and container workloads across OpenShift. Participants will investigate a connectivity and infrastructure issue, use OpenShift 5 AI-assisted capabilities (OpenShift Lightspeed) to help troubleshoot, validate findings against real cluster data, and implement the appropriate fix. The lab also covers areas improved from OpenShift 4, including virtual machine networking, observability, resource optimization, cluster management, and workload mobility.
+Deploying virtual machines on OpenShift is simply the Day 1 foundation; the true test
+of operational maturity begins on Day 2. Once workloads hit production, administrators
+face mission-critical challenges that define platform stability: stalling image imports
+(CDI), persistent storage bottlenecks, live-migration failures, network connectivity
+isolation, and guest agent synchronization gaps. This lab shifts the focus from simple
+deployment to resilient maintenance, equipping attendees with the diagnostic expertise
+needed to troubleshoot and resolve these complex Day 2 lifecycle issues.
 
-Participants will size an OpenShift Virtualization cluster from a simulated VMware estate using AI-assisted capacity planning, diagnose and fix a broken VM workload using Lightspeed, enforce network isolation with UserDefinedNetworks (UDN), right-size an over-provisioned VM using built-in observability, and finish by assessing a second cluster's readiness and performing a guided cross-cluster VM migration simulation using MTV.
+In this 120-minute hands-on lab, participants troubleshoot intentionally broken
+OpenShift Virtualization environments that mirror real production incidents. Rather than
+following predefined commands, attendees learn a structured diagnostic workflow using
+`oc`, `virtctl`, Kubernetes events, VirtualMachineInstance (VMI) objects, CDI resources,
+Multus networking, and virt-launcher logs. By the end of the session, attendees have a
+practical troubleshooting methodology they can apply in production to rapidly identify
+and resolve common OpenShift Virtualization operational issues.
 
 ## Target Audience
 
-- **Role:** Platform engineers / OpenShift administrators
+- **Role:** Platform engineers / OpenShift administrators / virtualization operators
 - **Experience level:** Intermediate
-- **What they already know:** Core Kubernetes/OpenShift concepts (pods, namespaces, `oc` CLI), general familiarity with virtualization concepts
-- **What they don't know:** OpenShift Virtualization specifics, OCP 5 AI-assisted troubleshooting and sizing workflows, UserDefinedNetworks (UDN), cross-cluster VM migration with MTV
+- **What they already know:** Core Kubernetes/OpenShift concepts (pods, namespaces,
+  `oc` CLI), general familiarity with virtualization and VM lifecycle concepts
+- **What they don't know:** OpenShift Virtualization Day 2 troubleshooting internals —
+  VMI/virt-launcher lifecycle, CDI/DataVolume import mechanics, live-migration
+  prerequisites, Multus/NMState VM networking, and QEMU Guest Agent integration
 
 ## Prerequisites
 
 - Familiarity with basic OpenShift/Kubernetes concepts (pods, namespaces, `oc` CLI)
-- No prior OpenShift Virtualization experience required
-- Can the lab validate these automatically? No — trust-based, consistent with the intermediate audience level
+- Comfort reading logs and Kubernetes events
+- No prior OpenShift Virtualization troubleshooting experience required
+- Can the lab validate these automatically? No — trust-based, consistent with the
+  intermediate audience level
 
 ## Learning Objectives
 
-1. Configure cluster sizing for an OpenShift Virtualization deployment using AI-assisted capacity planning
-2. Troubleshoot workload failures using AI-assisted diagnostics (OpenShift Lightspeed)
-3. Implement network isolation using UserDefinedNetworks (UDN)
-4. Scale VM resources appropriately using built-in observability
-5. Analyze cluster readiness for workload migration by profiling node capacity, storage compatibility, and network configuration
+1. Follow a structured troubleshooting workflow for OpenShift Virtualization using
+   `oc` and `virtctl`
+2. Diagnose VM startup and provisioning failures by inspecting VM/VMI lifecycle, Events,
+   and virt-launcher logs
+3. Troubleshoot CDI image imports and DataVolumes, including WaitForFirstConsumer
+   deadlocks and registry access failures
+4. Investigate live migration failures caused by storage, networking, CPU, and
+   host-device constraints
+5. Debug VM networking using Multus NetworkAttachmentDefinitions, NMState, and
+   NetworkPolicies
+6. Validate QEMU Guest Agent communication and restore Day 2 operational features
 
-<!-- Scaled to a 120-minute lab: 5 objectives across 6 modules, consistent with the up-to-3-per-45-min guideline. -->
+<!-- Scaled to a 120-minute lab: 6 objectives across 5 labs, each lab is a self-contained diagnostic scenario. -->
 
 ## Content Type
 
@@ -40,27 +62,30 @@ Lab (hands-on)
 
 ## Products & Technologies
 
-- Red Hat OpenShift Container Platform (5.x)
-- Red Hat OpenShift Virtualization (CNV)
-- OpenShift Lightspeed
-- Migration Toolkit for Virtualization (MTV)
-- UserDefinedNetworks (UDN)
+- Red Hat OpenShift Container Platform (4.21)
+- Red Hat OpenShift Virtualization (CNV / KubeVirt)
+- Containerized Data Importer (CDI) / DataVolumes
+- Migration Toolkit for Virtualization (MTV) — live/cross-node migration context
+- Multus CNI + NetworkAttachmentDefinitions
+- NMState (node network configuration / bridges)
+- QEMU Guest Agent
+- `oc` and `virtctl` CLIs
 
 ## Module Map
 
 | Module | Title | Duration |
 |--------|-------|----------|
-| 1 | AI-Assisted Sizing | 30 min |
-| 2 | AI-Assisted Troubleshooting | 30 min |
-| 3 | Networking Troubleshooting and Isolation | 20 min |
-| 4 | Resource Observability and Troubleshooting | 20 min |
-| 5 | Migration Readiness Assessment | 15 min |
-| 6 | Workload Migration | 5 min |
+| 1 | VM Stuck in Starting | 25 min |
+| 2 | CDI Import Failures | 25 min |
+| 3 | Live Migration Failures | 25 min |
+| 4 | Network Troubleshooting | 25 min |
+| 5 | Guest Agent Failures | 20 min |
 | — | **Total hands-on** | **120 min** |
 | — | Intro / presentation | ~0 min (fully hands-on) |
 | — | **Total lab** | **~2 hours** |
 
-<!-- Modules build progressively: size → troubleshoot → isolate → observe/right-size → assess migration readiness → migrate. Each stage depends on cluster state produced by the prior module. -->
+<!-- Each lab is an independent, intentionally-broken scenario. Labs do not depend on
+     prior state, so students can attempt them in any order (recommended order as listed). -->
 
 ## Difficulty Level
 
@@ -68,41 +93,76 @@ Intermediate
 
 ## Environment
 
-**Learner view:** Each student is given access to a pre-provisioned OpenShift Virtualization cluster seeded with a running VM workload, a simulated ("fake") VMware estate for the sizing exercise, and a pre-configured connectivity issue between VMs and services. Two clusters are provisioned to support the full class, with students split across them.
+**Learner view:** Each student is given access to a pre-provisioned OpenShift
+Virtualization cluster with a set of intentionally broken VM scenarios seeded into their
+own namespace. Each of the five labs presents a distinct failure (VM stuck in Starting,
+failed CDI import, blocked live migration, network isolation, dead guest agent) that the
+student must diagnose and fix using `oc`, `virtctl`, events, and logs. Students are split
+across clusters to support the full class.
 
 **Automation needed:** Yes.
 
-Automation must provision, per module:
-- A simulated VMware estate (fake VMware) with defined VM/vCPU/memory/storage counts for the sizing exercise (M1)
-- A broken VM workload for AI-assisted troubleshooting (M2) — exact fault type TBD (see Open Questions)
-- A pre-existing connectivity issue requiring UDN-based isolation (M3)
-- An over-provisioned VM for the observability/right-sizing exercise (M4)
-- A second cluster in a migratable state for the readiness assessment (M5)
-- A guided interactive (Arcade-style) simulation of a cross-cluster VM migration using MTV (M6)
+Automation must provision, per student:
+- **Lab 1 — VM Stuck in Starting:** a VM that cannot start the launcher pod (seed one or
+  more of: missing PVC/DataVolume, resource shortage, bad ContainerDisk reference,
+  invalid cloud-init)
+- **Lab 2 — CDI Import Failures:** a DataVolume whose import never completes
+  (WaitForFirstConsumer deadlock, missing scratch space, registry cert/auth/network
+  failure)
+- **Lab 3 — Live Migration Failures:** a VM that cannot live-migrate (ReadWriteOnce
+  storage, missing migration network, CPU incompatibility, or host-device dependency)
+- **Lab 4 — Network Troubleshooting:** a running VM that cannot reach external systems or
+  cluster resources (wrong binding, broken NAD, NMState bridge issue, restrictive
+  NetworkPolicy)
+- **Lab 5 — Guest Agent Failures:** a running VM whose guest agent integration is broken
+  (missing/disabled QEMU Guest Agent, missing VirtIO channel, SELinux/firewall
+  restriction)
 - Multi-user namespacing/RBAC so each student has an isolated workspace
-- OpenShift Lightspeed available for AI-assisted troubleshooting and sizing (M1, M2)
 
 ## Infrastructure Requirements
 
-- **Cloud provider:** CNV (OcpSandbox pattern)
-- **Cluster type:** Multinode
-- **OCP version:** 5.0 (non-GA at time of authoring — see Non-GA products below)
-- **Topology:** Shared-cluster — 2 clusters, 15 users per cluster (30 students total)
-- **Sizing:** Control plane: 3 × 16 vCPU / 32Gi RAM. Workers: 3 × 16 vCPU / 64Gi RAM / 100GB disk (per cluster)
-- **Automation approach:** GitOps (Helm + ArgoCD)
-- **AI/MaaS:** None required from this CI. OpenShift Lightspeed (`ocp4_workload_ols`, existing role) uses an external Azure-managed service — not a model deployed by lab automation
-- **External services:** `registry.redhat.io` / `registry.access.redhat.com` (container image pulls); `llm-gpt4-lightspeed.cognitiveservices.azure.com` (Azure OpenAI, backing `ocp4_workload_ols`)
+- **Base catalog item (agnosticV):** `openshift_cnv/ocp-virt-roadshow-2026` — reused as
+  the infrastructure base and re-purposed for troubleshooting content
+- **Cloud provider:** CNV (OcpSandbox pattern — `cloud: cnv, purpose: prod, virt: yes`)
+- **Cluster type:** Multinode, deployed via OpenShift Assisted Installer
+  (`software_to_deploy: openshift4_assisted`)
+- **OCP version:** 4.21 (base CI `ocp4_installer_version: 4.21.10`)
+- **Network stack:** OVNKubernetes; VM networks via linux-bridge (`br-flat`) + NMState
+- **Topology:** Shared-cluster — up to 20 users per cluster; workers scale with user
+  count (`worker_instance_count = max(ceil(num_users/5), 3)`)
+- **Sizing (≤10 workers):** Control plane 3 × 16 vCPU / 32Gi RAM; workers ≥3 × 16 vCPU /
+  64Gi RAM / 100GB disk. OcpSandbox quota: 128 CPU / 800Gi RAM per sandbox.
+- **Automation approach:** GitOps (OpenShift GitOps / ArgoCD) — base CI uses
+  `ocp4_workload_openshift_gitops`
+- **Key workloads (from base CI):** `ocp4_workload_kubevirt`, `ocp4_workload_mtv`,
+  `ocp4_workload_nmstate`, `ocp4_workload_virt_network_config`,
+  `ocp4_workload_virt_roadshow_vms`, `ocp4_workload_external_odf`,
+  `ocp4_workload_authentication`, `ocp4_workload_cert_manager`,
+  `ocp4_workload_web_terminal`, `ocp4_workload_showroom`
+- **AI/MaaS:** None — this lab uses no AI/Lightspeed
+- **External services:** `registry.redhat.io` / `registry.access.redhat.com` (image and
+  ContainerDisk pulls); `mirror.openshift.com` (installer clients)
 - **AAP version:** N/A — Ansible Automation Platform is not a product in this lab
-- **Non-GA products:** Red Hat OpenShift Container Platform 5.x (pre-GA at time of authoring). Access plan: TBD — pending confirmation of OCP 5 availability on the CNV pool
+- **Non-GA products:** None — OCP 4.21 is GA
 
 ## Assessment Strategy (Optional)
 
-Trust-based for most modules — students validate their own fixes visually via cluster state and console output. Module 5 (Migration Readiness Assessment) uses a checklist the student fills in to produce a go/no-go recommendation. Module 6 (Workload Migration) is a guided interactive simulation (Arcade) with built-in progression checks.
+Trust-based and outcome-driven. Each lab has a clear broken → fixed state that students
+verify themselves by inspecting cluster state (VM/VMI status, Events, pod logs,
+connectivity checks). Success is proven by the VM reaching the expected
+running / migrated / reachable state after the fix, not by an automated grader. Each lab
+outline lists the specific "how you know it's fixed" signal.
 
 ## Open Questions
 
-<!-- Carried over from source planning doc — resolve during development -->
+<!-- Resolve during development -->
 
-1. What is the "broken" scenario for Module 2 (AI-Assisted Troubleshooting)? Candidates: misconfigured NetworkPolicy, wrong StorageClass, resource limits causing OOM.
-2. Is UDN GA in OCP 5 at release time? If tech-preview, Module 3 needs a fallback approach.
-3. When will OCP 5 be installable/available on the CNV pool?
+1. Which specific fault(s) does each lab seed? Some labs list multiple candidate faults
+   (e.g. Lab 1 could be a missing PVC *or* a resource shortage) — development must pick
+   the canonical fault per lab (and optionally rotate variants for reruns).
+2. Does the base `ocp-virt-roadshow-2026` automation need new "break" roles, or can
+   existing roadshow VM workloads be perturbed post-deploy? (Affects `automation/` design.)
+3. Live migration (Lab 3): is a dedicated migration network available in the CNV
+   sandbox, or should the ReadWriteOnce/shared-storage variant be the canonical fault?
+4. Guest Agent (Lab 5): confirm the base VM images ship the QEMU Guest Agent so it can be
+   deliberately disabled rather than needing installation.
