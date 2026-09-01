@@ -13,60 +13,57 @@ project:
   initiative_key: "rh1_2027"
   showroom_type: "classic"
   intake_type: "new"
-  automation_type: "gitops"
-  description: "This hands-on lab puts attendees into a realistic customer environment running virtual machines and container workloads across OpenShift. They will investigate a connectivity and infrastructure issue, use OpenShift 5 AI-assisted capabilities to help with troubleshooting, validate the findings against real cluster data, and implement the appropriate fix.  The lab will also cover areas that have improved from OpenShift 4, including virtual machine networking, observability, resource optimisation, cluster management and workload mobility. Attendees will then assess a second cluster and perform a controlled workload migration.  The focus is on practical consulting skills rather than a product walkthrough: understand the problem, gather evidence, make the change and prove the outcome. "
+  automation_type: "both"
+  description: "A 120-minute hands-on Day 2 operations lab where participants troubleshoot intentionally broken OpenShift Virtualization environments that mirror real production incidents. Rather than following predefined commands, attendees learn a structured diagnostic workflow using oc, virtctl, Kubernetes events, VirtualMachineInstance (VMI) objects, CDI resources, Multus networking, and virt-launcher logs. Across five labs, they diagnose and resolve VM startup failures, CDI/DataVolume import failures, live-migration failures, network isolation issues, and guest agent synchronization gaps — finishing with a practical troubleshooting methodology they can apply in production."
   # content_reviewer_email and infra_reviewer_email are assigned by the RHDP team — not set by the author
   jira_ticket: "RHDPCD-1220"
   workflow_id: "f27392bf-2e90-4efe-b7a3-501af7d4eb52"
 
 spec:
-  title: "OpenShift 5 Virtualization in Practice: Troubleshooting, Networking & Workload Mobility"
+  title: "OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures"
   learning_objectives:
-    - "Configure cluster sizing for an OpenShift Virtualization deployment using AI-assisted capacity planning"
-    - "Troubleshoot workload failures using AI-assisted diagnostics (OpenShift Lightspeed)"
-    - "Implement network isolation using UserDefinedNetworks (UDN)"
-    - "Scale VM resources appropriately using built-in observability"
-    - "Analyze cluster readiness for workload migration by profiling node capacity, storage compatibility, and network configuration"
+    - "Follow a structured troubleshooting workflow for OpenShift Virtualization using oc and virtctl"
+    - "Diagnose VM startup and provisioning failures by inspecting VM/VMI lifecycle, Events, and virt-launcher logs"
+    - "Troubleshoot CDI image imports and DataVolumes, including WaitForFirstConsumer deadlocks and registry access failures"
+    - "Investigate live migration failures caused by storage, networking, CPU, and host-device constraints"
+    - "Debug VM networking using Multus NetworkAttachmentDefinitions, NMState, and NetworkPolicies"
+    - "Validate QEMU Guest Agent communication and restore Day 2 operational features"
   modules:              # [{id, title, duration_min}] — written by intake Phase 4; id is stable (e.g. module-01)
     - id: module-01
-      title: "AI-Assisted Sizing"
-      duration_min: 30
+      title: "VM Stuck in Starting"
+      duration_min: 25
       status: not_started
     - id: module-02
-      title: "AI-Assisted Troubleshooting"
-      duration_min: 30
+      title: "CDI Import Failures"
+      duration_min: 25
       status: not_started
     - id: module-03
-      title: "Networking Troubleshooting and Isolation"
-      duration_min: 20
+      title: "Live Migration Failures"
+      duration_min: 25
       status: not_started
     - id: module-04
-      title: "Resource Observability and Troubleshooting"
-      duration_min: 20
+      title: "Network Troubleshooting"
+      duration_min: 25
       status: not_started
     - id: module-05
-      title: "Migration Readiness Assessment"
-      duration_min: 15
-      status: not_started
-    - id: module-06
-      title: "Workload Migration"
-      duration_min: 5
+      title: "Guest Agent Failures"
+      duration_min: 20
       status: not_started
   environment:
     platform: "ocp"               # ocp | rhel-vms — determines which sizing fields apply
     topology: "shared-cluster"               # shared-cluster | per-student | cnv-pool
     cloud_provider: cnv        # cnv | aws | troshka — cnv is default
-    max_concurrent_users: 15 # required if topology = shared-cluster — 2 clusters x 15 users each
+    max_concurrent_users: 20 # required if topology = shared-cluster — up to 20 users per cluster (ocp-virt-roadshow-2026 base CI)
 
     # --- OCP-specific fields (only when platform = ocp) ---
-    ocp_version: "5.0"                    # e.g. 4.20 — minimum 4.20; leave empty for rhel-vms — pre-GA, see non_ga_products
+    ocp_version: "4.21"                    # from base CI ocp4_installer_version 4.21.10 — GA
     cluster_type: "multinode"                   # sno | multinode — only for platform = ocp
     control_plane_instance_count: 3 # 1 if sno, 3 if multinode
-    control_plane_cpu: 16            # 32 if sno, 16 if multinode
-    control_plane_ram_gb: 32         # 128 if sno, 64 if multinode
-    worker_count: 3                 # number of OCP worker nodes
-    worker_cpu: 16                  # vCPU per worker
-    worker_ram_gb: 64                # RAM per worker in GB
+    control_plane_cpu: 16            # ai_control_plane_cores when workers <= 10
+    control_plane_ram_gb: 32         # ai_control_plane_memory 32Gi when workers <= 10
+    worker_count: 3                 # worker_instance_count = max(ceil(num_users/5), 3)
+    worker_cpu: 16                  # ai_workers_cores
+    worker_ram_gb: 64                # ai_workers_memory 64Gi
     worker_disk_gb: 100               # disk per worker in GB
 
     # --- VM-specific fields (only when platform = rhel-vms) ---
@@ -74,17 +71,16 @@ spec:
     vms_per_student: []
 
     # --- Common fields (both platforms) ---
-    aap_version: ""                    # required if AAP in products
-    ai_requirement: "none"                 # maas | gpu | none — Lightspeed (ocp4_workload_ols) uses an external Azure-managed service, not deployed by this CI
+    aap_version: ""                    # required if AAP in products — N/A, not used
+    ai_requirement: "none"                 # maas | gpu | none — no AI/Lightspeed in this lab
     ai_model_tier: ""                  # open-source | frontier (if ai_requirement = maas or gpu)
     ai_model_name: ""                  # specific model e.g. granite-3.1-8b
     ai_justification: ""               # required if ai_model_tier = frontier or ai_requirement = gpu
-    non_ga_products:                # list of non-GA products/versions
-      - "Red Hat OpenShift Container Platform 5.x (pre-GA at time of authoring)"
-    non_ga_access_plan: "TBD — pending confirmation of OCP 5 availability on the CNV pool"             # how access is provided for non-GA products
+    non_ga_products: []             # OCP 4.21 is GA — no non-GA products
+    non_ga_access_plan: ""             # how access is provided for non-GA products
     external_services:              # named external service dependencies e.g. [github.com]
-      - "registry.redhat.io / registry.access.redhat.com (container image pulls)"
-      - "llm-gpt4-lightspeed.cognitiveservices.azure.com (Azure OpenAI, backing ocp4_workload_ols)"
+      - "registry.redhat.io / registry.access.redhat.com (container image and ContainerDisk pulls)"
+      - "mirror.openshift.com (OCP installer clients)"
     gpu_nodes: 0                       # number of GPU nodes (0 = none)
     gpu_type: ""                       # e.g. NVIDIA A100 40GB (required if gpu_nodes > 0)
   duration_hours: 2
@@ -112,60 +108,28 @@ approval_checklist:
 
   content:
     prerequisites_verifiable: false
-    assessment_strategy: "Trust-based for most modules — students validate fixes visually via cluster state and console output. Module 5 uses a self-completed readiness checklist; Module 6 is a guided Arcade simulation with built-in progression checks."
-    catalog_gap: "Existing catalog labs cover pieces of this design (UDN isolation, resource observability/right-sizing, MTV migration, RHACM multi-cluster management) but none combine OpenShift Lightspeed AI-assisted sizing and troubleshooting with UDN isolation and migration readiness assessment in a single intermediate-level, ~2-hour flow. This lab also evolves the existing openshift-cnv.ocp-virt-roadshow-2026 base pattern rather than duplicating it."
-    design_overview: "A 2-hour intermediate hands-on lab where attendees troubleshoot a connectivity/infrastructure issue in an OpenShift Virtualization environment using AI-assisted capabilities (OpenShift Lightspeed), then apply UDN network isolation, right-size VM resources via built-in observability, and finish by assessing a second cluster's migration readiness and performing a guided cross-cluster VM migration simulation with MTV."
+    assessment_strategy: "Trust-based, outcome-driven. Each lab has a clear broken → fixed state that students verify themselves by inspecting cluster state (VM/VMI status, Events, pod logs, connectivity checks). Success in each lab is proven by the VM reaching the expected running/migrated/reachable state after the fix, not by an automated grader."
+    catalog_gap: "Existing catalog labs (ocp-virt-roadshow-2026, ocp-virt-advanced-ops) focus on Day 1 deployment and feature walkthroughs of OpenShift Virtualization. None deliver a dedicated Day 2 troubleshooting methodology across the five most common production failure classes — VM startup, CDI imports, live migration, networking, and guest agent — where students diagnose intentionally broken environments rather than follow happy-path steps. This lab reuses the ocp-virt-roadshow-2026 infrastructure base (kubevirt, mtv, nmstate, network bridges, roadshow VMs) but reorients the content entirely around structured diagnosis and remediation."
+    design_overview: "A 120-minute intermediate, fully hands-on Day 2 operations lab. Attendees troubleshoot intentionally broken OpenShift Virtualization environments that mirror real production incidents across five labs: (1) VM stuck in Starting, (2) CDI import failures, (3) live migration failures, (4) network isolation/connectivity, and (5) guest agent failures. Rather than following predefined commands, students learn a structured diagnostic workflow using oc, virtctl, Kubernetes events, VMI objects, CDI resources, Multus networking, and virt-launcher logs, and finish with a reusable troubleshooting methodology."
     module_summaries:
-      - title: "AI-Assisted Sizing"
-        overview: "Student translates a simulated VMware estate into an OpenShift Virtualization cluster size using Lightspeed, then validates against Red Hat sizing guidance."
-      - title: "AI-Assisted Troubleshooting"
-        overview: "A VM workload is down; student uses Lightspeed plus events/logs/conditions to find and fix the root cause, then proves recovery."
-      - title: "Networking Troubleshooting and Isolation"
-        overview: "Student identifies an unwanted VM-to-service connectivity issue and implements UDN to enforce proper network segmentation."
-      - title: "Resource Observability and Troubleshooting"
-        overview: "Student uses OCP console dashboards to find and right-size an over-provisioned VM, then creates a PrometheusRule alert for memory threshold."
-      - title: "Migration Readiness Assessment"
-        overview: "Student profiles a second cluster's node capacity, storage classes, CSI snapshot support, network CNI type, and VM guest OS compatibility to produce a go/no-go migration recommendation."
-      - title: "Workload Migration"
-        overview: "Guided interactive (Arcade) simulation of a cross-cluster VM migration using MTV."
-    rcars_overlap_pct: 82
-    rcars_top_matches:
-      - title: "Experience OpenShift Virtualization: Advanced Operations and Automation"
-        ci_name: "openshift-cnv.ocp-virt-advanced-ops.prod"
-        url: "https://catalog.demo.redhat.com/catalog?item=openshift-cnv.ocp-virt-advanced-ops.prod"
-        relevance_score: 82
-        why_it_fits: "Covers User Defined Networks (UDN) for network isolation, VM performance observability and resource right-sizing, and multi-cluster VM management within an OpenShift Virtualization context."
-      - title: "Experience OpenShift Virtualization: Advanced Operations and Automation - Shared RHACM HUB"
-        ci_name: "openshift-cnv.ocp-virt-advanced-ops-hub.prod"
-        url: "https://catalog.demo.redhat.com/catalog?item=openshift-cnv.ocp-virt-advanced-ops-hub.prod"
-        relevance_score: 80
-        why_it_fits: "Covers UDN for VM network isolation, KubeVirt metrics/PromQL-based resource observability, and multi-cluster VM management with RHACM."
-      - title: "LB1839 - Beyond the basics: Operationalizing Red Hat OpenShift Virtualization"
-        ci_name: "summit-2026.lb1839-balance-virt-fallback.prod"
-        url: "https://catalog.demo.redhat.com/catalog?item=summit-2026.lb1839-balance-virt-fallback.prod"
-        relevance_score: 72
-        why_it_fits: "Covers OpenShift Virtualization, Migration Toolkit for Virtualization, cross-cluster VM migration, and resource management with hands-on operational depth on migration readiness and right-sizing."
-        workloads:
-          - role: "ocp4_workload_authentication"
-            collection: "agnosticd.core_workloads"
-          - role: "ocp4_workload_cert_manager"
-            collection: "agnosticd.core_workloads"
-          - role: "ocp4_workload_external_odf"
-            collection: "agnosticd.core_workloads"
-          - role: "ocp4_workload_gitops_bootstrap"
-            collection: "agnosticd.core_workloads"
-          - role: "ocp4_workload_ocp_console_embed"
-            collection: "agnosticd.showroom"
-          - role: "ocp4_workload_openshift_gitops"
-            collection: "agnosticd.core_workloads"
-          - role: "ocp4_workload_showroom"
-            collection: "agnosticd.showroom"
+      - title: "VM Stuck in Starting"
+        overview: "A VM never progresses beyond Starting because the launcher pod cannot be scheduled or initialized. Student inspects VM/VMI lifecycle, Events, and virt-launcher logs to find the root cause — missing PVC/DataVolume, resource shortage (CPU/memory/hugepages), ContainerDisk pull failure, or invalid cloud-init — and fixes it."
+      - title: "CDI Import Failures"
+        overview: "VM provisioning fails because the DataVolume import never completes. Student inspects DataVolumes and importer pods and analyzes PVC events to diagnose WaitForFirstConsumer deadlocks, missing scratch space, registry certificate problems, or authentication/network access failures, then configures CDI storage correctly."
+      - title: "Live Migration Failures"
+        overview: "Live migration fails during node maintenance due to infrastructure constraints. Student analyzes migration events and validates shared storage to diagnose ReadWriteOnce limitations, a missing migration network, CPU incompatibilities, or SR-IOV/GPU/host-device dependencies, and applies the correct migration prerequisites."
+      - title: "Network Troubleshooting"
+        overview: "A VM is running but cannot communicate with external systems or cluster resources. Student inspects VM interfaces, validates Multus NetworkAttachmentDefinitions and NMState bridge config, and traces packet flow to diagnose incorrect bindings, broken NADs, bridge issues, or restrictive NetworkPolicies."
+      - title: "Guest Agent Failures"
+        overview: "The VM is operational, but platform integrations (graceful shutdown, IP reporting, memory ballooning) do not work. Student validates guest agent connectivity to diagnose a missing/disabled QEMU Guest Agent, a missing VirtIO channel, or SELinux/firewall restrictions, and restores Day 2 management features."
+    rcars_overlap_pct: 0
+    rcars_top_matches: []
     rejections: []
 
   infra:
     peak_environments: null
     cost_per_run_est: ""
     provisioning_time_est: ""
-    agnosticv_base_ci: ""
+    agnosticv_base_ci: "openshift_cnv.ocp-virt-roadshow-2026"
     approved_by: ""
     rejections: []
