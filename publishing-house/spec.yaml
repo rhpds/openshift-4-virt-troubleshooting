@@ -1,91 +1,88 @@
-# Publishing House — Project Spec
-# Lifecycle: intake → content_review → infra_review → jira_sync → development → ready → published
-# No secrets in this file. Tokens live in ~/.config/publishing-house/auth.json
-# Stage is managed by SonataFlow and cached in .ph-state — do not edit stage.current manually.
-# NOTE: This file is also in the template repo. The Scaffolder overlays project.* values.
-# TODO: Eliminate this copy — Scaffolder should pull from template repo directly.
-
 project:
-  slug: "openshift-5-virt"
-  owner_email: "jboeselm@redhat.com"
-  content_type: "lab"
-  deployment_mode: "rhdp_published"
-  initiative_key: "rh1_2027"
-  showroom_type: "classic"
-  intake_type: "new"
-  automation_type: "both"
-  description: "A 120-minute hands-on Day 2 operations lab where participants troubleshoot intentionally broken OpenShift Virtualization environments that mirror real production incidents. Rather than following predefined commands, attendees learn a structured diagnostic workflow using oc, virtctl, Kubernetes events, VirtualMachineInstance (VMI) objects, CDI resources, Multus networking, and virt-launcher logs. Across five labs, they diagnose and resolve VM startup failures, CDI/DataVolume import failures, live-migration failures, network isolation issues, and guest agent synchronization gaps — finishing with a practical troubleshooting methodology they can apply in production."
-  # content_reviewer_email and infra_reviewer_email are assigned by the RHDP team — not set by the author
-  jira_ticket: "RHDPCD-1220"
-  workflow_id: "f27392bf-2e90-4efe-b7a3-501af7d4eb52"
-
+  slug: openshift-5-virt
+  owner_email: jboeselm@redhat.com
+  content_type: lab
+  deployment_mode: rhdp_published
+  initiative_key: rh1_2027
+  showroom_type: classic
+  intake_type: new
+  automation_type: both
+  description: "A 120-minute hands-on Day 2 operations lab where participants troubleshoot\
+    \ intentionally broken OpenShift Virtualization environments that mirror real\
+    \ production incidents. Rather than following predefined commands, attendees learn\
+    \ a structured diagnostic workflow using oc, virtctl, Kubernetes events, VirtualMachineInstance\
+    \ (VMI) objects, CDI resources, Multus networking, and virt-launcher logs. Across\
+    \ five labs, they diagnose and resolve VM startup failures, CDI/DataVolume import\
+    \ failures, live-migration failures, network isolation issues, and guest agent\
+    \ synchronization gaps \u2014 finishing with a practical troubleshooting methodology\
+    \ they can apply in production."
+  jira_ticket: RHDPCD-1220
+  workflow_id: f27392bf-2e90-4efe-b7a3-501af7d4eb52
 spec:
-  title: "OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures"
+  title: 'OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production
+    Failures'
   learning_objectives:
-    - "Follow a structured troubleshooting workflow for OpenShift Virtualization using oc and virtctl"
-    - "Diagnose VM startup and provisioning failures by inspecting VM/VMI lifecycle, Events, and virt-launcher logs"
-    - "Troubleshoot CDI image imports and DataVolumes, including WaitForFirstConsumer deadlocks and registry access failures"
-    - "Investigate live migration failures caused by storage, networking, CPU, and host-device constraints"
-    - "Debug VM networking using Multus NetworkAttachmentDefinitions, NMState, and NetworkPolicies"
-    - "Validate QEMU Guest Agent communication and restore Day 2 operational features"
-  modules:              # [{id, title, duration_min}] — written by intake Phase 4; id is stable (e.g. module-01)
-    - id: module-01
-      title: "VM Stuck in Starting"
-      duration_min: 25
-      status: not_started
-    - id: module-02
-      title: "CDI Import Failures"
-      duration_min: 25
-      status: not_started
-    - id: module-03
-      title: "Live Migration Failures"
-      duration_min: 25
-      status: not_started
-    - id: module-04
-      title: "Network Troubleshooting"
-      duration_min: 25
-      status: not_started
-    - id: module-05
-      title: "Guest Agent Failures"
-      duration_min: 20
-      status: not_started
+  - Follow a structured troubleshooting workflow for OpenShift Virtualization using
+    oc and virtctl
+  - Diagnose VM startup and provisioning failures by inspecting VM/VMI lifecycle,
+    Events, and virt-launcher logs
+  - Troubleshoot CDI image imports and DataVolumes, including WaitForFirstConsumer
+    deadlocks and registry access failures
+  - Investigate live migration failures caused by storage, networking, CPU, and host-device
+    constraints
+  - Debug VM networking using Multus NetworkAttachmentDefinitions, NMState, and NetworkPolicies
+  - Validate QEMU Guest Agent communication and restore Day 2 operational features
+  modules:
+  - id: module-01
+    title: VM Stuck in Starting
+    duration_min: 25
+    status: not_started
+  - id: module-02
+    title: CDI Import Failures
+    duration_min: 25
+    status: not_started
+  - id: module-03
+    title: Live Migration Failures
+    duration_min: 25
+    status: not_started
+  - id: module-04
+    title: Network Troubleshooting
+    duration_min: 25
+    status: not_started
+  - id: module-05
+    title: Guest Agent Failures
+    duration_min: 20
+    status: not_started
   environment:
-    platform: "ocp"               # ocp | rhel-vms — determines which sizing fields apply
-    topology: "shared-cluster"               # shared-cluster | per-student | cnv-pool
-    cloud_provider: cnv        # cnv | aws | troshka — cnv is default
-    max_concurrent_users: 20 # required if topology = shared-cluster — up to 20 users per cluster (ocp-virt-roadshow-2026 base CI)
-
-    # --- OCP-specific fields (only when platform = ocp) ---
-    ocp_version: "4.21"                    # from base CI ocp4_installer_version 4.21.10 — GA
-    cluster_type: "multinode"                   # sno | multinode — only for platform = ocp
-    control_plane_instance_count: 3 # 1 if sno, 3 if multinode
-    control_plane_cpu: 16            # ai_control_plane_cores when workers <= 10
-    control_plane_ram_gb: 32         # ai_control_plane_memory 32Gi when workers <= 10
-    worker_count: 3                 # worker_instance_count = max(ceil(num_users/5), 3)
-    worker_cpu: 16                  # ai_workers_cores
-    worker_ram_gb: 64                # ai_workers_memory 64Gi
-    worker_disk_gb: 100               # disk per worker in GB
-
-    # --- VM-specific fields (only when platform = rhel-vms) ---
-    # Each entry: {role, count, cpu, ram_gb, disk_gb, os}
+    platform: ocp
+    topology: shared-cluster
+    cloud_provider: cnv
+    max_concurrent_users: 20
+    ocp_version: '4.21'
+    cluster_type: multinode
+    control_plane_instance_count: 3
+    control_plane_cpu: 16
+    control_plane_ram_gb: 32
+    worker_count: 3
+    worker_cpu: 16
+    worker_ram_gb: 64
+    worker_disk_gb: 100
     vms_per_student: []
-
-    # --- Common fields (both platforms) ---
-    aap_version: ""                    # required if AAP in products — N/A, not used
-    ai_requirement: "none"                 # maas | gpu | none — no AI/Lightspeed in this lab
-    ai_model_tier: ""                  # open-source | frontier (if ai_requirement = maas or gpu)
-    ai_model_name: ""                  # specific model e.g. granite-3.1-8b
-    ai_justification: ""               # required if ai_model_tier = frontier or ai_requirement = gpu
-    non_ga_products: []             # OCP 4.21 is GA — no non-GA products
-    non_ga_access_plan: ""             # how access is provided for non-GA products
-    external_services:              # named external service dependencies e.g. [github.com]
-      - "registry.redhat.io / registry.access.redhat.com (container image and ContainerDisk pulls)"
-      - "mirror.openshift.com (OCP installer clients)"
-    gpu_nodes: 0                       # number of GPU nodes (0 = none)
-    gpu_type: ""                       # e.g. NVIDIA A100 40GB (required if gpu_nodes > 0)
+    aap_version: ''
+    ai_requirement: none
+    ai_model_tier: ''
+    ai_model_name: ''
+    ai_justification: ''
+    non_ga_products: []
+    non_ga_access_plan: ''
+    external_services:
+    - registry.redhat.io / registry.access.redhat.com (container image and ContainerDisk
+      pulls)
+    - mirror.openshift.com (OCP installer clients)
+    gpu_nodes: 0
+    gpu_type: ''
   duration_hours: 2
-  audience: "intermediate"               # beginner | intermediate | advanced
-
+  audience: intermediate
 development:
   automation:
     gitops:
@@ -94,42 +91,97 @@ development:
     status: not_started
   healthCheck:
     status: not_started
-
 compliance:
   last_hard_check: null
   hard_result: null
-
 tracking:
   paused: false
   pause_reason: null
-
-# Approval checklist — filled collaboratively by author + skill + system + reviewers
 approval_checklist:
-
   content:
     prerequisites_verifiable: false
-    assessment_strategy: "Trust-based, outcome-driven. Each lab has a clear broken → fixed state that students verify themselves by inspecting cluster state (VM/VMI status, Events, pod logs, connectivity checks). Success in each lab is proven by the VM reaching the expected running/migrated/reachable state after the fix, not by an automated grader."
-    catalog_gap: "Existing catalog labs (ocp-virt-roadshow-2026, ocp-virt-advanced-ops) focus on Day 1 deployment and feature walkthroughs of OpenShift Virtualization. None deliver a dedicated Day 2 troubleshooting methodology across the five most common production failure classes — VM startup, CDI imports, live migration, networking, and guest agent — where students diagnose intentionally broken environments rather than follow happy-path steps. This lab reuses the ocp-virt-roadshow-2026 infrastructure base (kubevirt, mtv, nmstate, network bridges, roadshow VMs) but reorients the content entirely around structured diagnosis and remediation."
-    design_overview: "A 120-minute intermediate, fully hands-on Day 2 operations lab. Attendees troubleshoot intentionally broken OpenShift Virtualization environments that mirror real production incidents across five labs: (1) VM stuck in Starting, (2) CDI import failures, (3) live migration failures, (4) network isolation/connectivity, and (5) guest agent failures. Rather than following predefined commands, students learn a structured diagnostic workflow using oc, virtctl, Kubernetes events, VMI objects, CDI resources, Multus networking, and virt-launcher logs, and finish with a reusable troubleshooting methodology."
+    assessment_strategy: "Trust-based, outcome-driven. Each lab has a clear broken\
+      \ \u2192 fixed state that students verify themselves by inspecting cluster state\
+      \ (VM/VMI status, Events, pod logs, connectivity checks). Success in each lab\
+      \ is proven by the VM reaching the expected running/migrated/reachable state\
+      \ after the fix, not by an automated grader."
+    catalog_gap: "Existing catalog labs (ocp-virt-roadshow-2026, ocp-virt-advanced-ops)\
+      \ focus on Day 1 deployment and feature walkthroughs of OpenShift Virtualization.\
+      \ None deliver a dedicated Day 2 troubleshooting methodology across the five\
+      \ most common production failure classes \u2014 VM startup, CDI imports, live\
+      \ migration, networking, and guest agent \u2014 where students diagnose intentionally\
+      \ broken environments rather than follow happy-path steps. This lab reuses the\
+      \ ocp-virt-roadshow-2026 infrastructure base (kubevirt, mtv, nmstate, network\
+      \ bridges, roadshow VMs) but reorients the content entirely around structured\
+      \ diagnosis and remediation."
+    design_overview: 'A 120-minute intermediate, fully hands-on Day 2 operations lab.
+      Attendees troubleshoot intentionally broken OpenShift Virtualization environments
+      that mirror real production incidents across five labs: (1) VM stuck in Starting,
+      (2) CDI import failures, (3) live migration failures, (4) network isolation/connectivity,
+      and (5) guest agent failures. Rather than following predefined commands, students
+      learn a structured diagnostic workflow using oc, virtctl, Kubernetes events,
+      VMI objects, CDI resources, Multus networking, and virt-launcher logs, and finish
+      with a reusable troubleshooting methodology.'
     module_summaries:
-      - title: "VM Stuck in Starting"
-        overview: "A VM never progresses beyond Starting because the launcher pod cannot be scheduled or initialized. Student inspects VM/VMI lifecycle, Events, and virt-launcher logs to find the root cause — missing PVC/DataVolume, resource shortage (CPU/memory/hugepages), ContainerDisk pull failure, or invalid cloud-init — and fixes it."
-      - title: "CDI Import Failures"
-        overview: "VM provisioning fails because the DataVolume import never completes. Student inspects DataVolumes and importer pods and analyzes PVC events to diagnose WaitForFirstConsumer deadlocks, missing scratch space, registry certificate problems, or authentication/network access failures, then configures CDI storage correctly."
-      - title: "Live Migration Failures"
-        overview: "Live migration fails during node maintenance due to infrastructure constraints. Student analyzes migration events and validates shared storage to diagnose ReadWriteOnce limitations, a missing migration network, CPU incompatibilities, or SR-IOV/GPU/host-device dependencies, and applies the correct migration prerequisites."
-      - title: "Network Troubleshooting"
-        overview: "A VM is running but cannot communicate with external systems or cluster resources. Student inspects VM interfaces, validates Multus NetworkAttachmentDefinitions and NMState bridge config, and traces packet flow to diagnose incorrect bindings, broken NADs, bridge issues, or restrictive NetworkPolicies."
-      - title: "Guest Agent Failures"
-        overview: "The VM is operational, but platform integrations (graceful shutdown, IP reporting, memory ballooning) do not work. Student validates guest agent connectivity to diagnose a missing/disabled QEMU Guest Agent, a missing VirtIO channel, or SELinux/firewall restrictions, and restores Day 2 management features."
+    - title: VM Stuck in Starting
+      overview: "A VM never progresses beyond Starting because the launcher pod cannot\
+        \ be scheduled or initialized. Student inspects VM/VMI lifecycle, Events,\
+        \ and virt-launcher logs to find the root cause \u2014 missing PVC/DataVolume,\
+        \ resource shortage (CPU/memory/hugepages), ContainerDisk pull failure, or\
+        \ invalid cloud-init \u2014 and fixes it."
+    - title: CDI Import Failures
+      overview: VM provisioning fails because the DataVolume import never completes.
+        Student inspects DataVolumes and importer pods and analyzes PVC events to
+        diagnose WaitForFirstConsumer deadlocks, missing scratch space, registry certificate
+        problems, or authentication/network access failures, then configures CDI storage
+        correctly.
+    - title: Live Migration Failures
+      overview: Live migration fails during node maintenance due to infrastructure
+        constraints. Student analyzes migration events and validates shared storage
+        to diagnose ReadWriteOnce limitations, a missing migration network, CPU incompatibilities,
+        or SR-IOV/GPU/host-device dependencies, and applies the correct migration
+        prerequisites.
+    - title: Network Troubleshooting
+      overview: A VM is running but cannot communicate with external systems or cluster
+        resources. Student inspects VM interfaces, validates Multus NetworkAttachmentDefinitions
+        and NMState bridge config, and traces packet flow to diagnose incorrect bindings,
+        broken NADs, bridge issues, or restrictive NetworkPolicies.
+    - title: Guest Agent Failures
+      overview: The VM is operational, but platform integrations (graceful shutdown,
+        IP reporting, memory ballooning) do not work. Student validates guest agent
+        connectivity to diagnose a missing/disabled QEMU Guest Agent, a missing VirtIO
+        channel, or SELinux/firewall restrictions, and restores Day 2 management features.
     rcars_overlap_pct: 0
     rcars_top_matches: []
-    rejections: []
-
+    rejections:
+    - id: 7a3d1258-f8f3-4669-858f-82c1af9cc00b
+      text: The topic slot for this one is (OpenShift Virtualization troubleshooting).
+        I would like to see this more focused on real-world practical troubleshooting.
+        Please contact Mohit Vardhani. He submitted lab LB1606 which approaches this
+        well. It would be good to offer to have him join as a co-developer for this
+        lab.
+      resolved: false
+      reviewer: nstephan@redhat.com
+      timestamp: '2026-08-27T08:22:46.207382+00:00'
+    - id: 54352a8a-f66e-448e-94f8-6786341a691b
+      text: 'It seems like there is at least some overlap with what AC is planning
+        on in the LB2076 (OpenShift Virtualization Reimagined: Hands-On with openShift
+        5 Capabilities). Talk to Alan and make sure this lab is distinct enough from
+        that one. His lab is the evolution of the OpenShift Virt Roadshow.'
+      resolved: false
+      reviewer: nstephan@redhat.com
+      timestamp: '2026-08-27T08:22:46.207382+00:00'
+    - id: 79fbcff5-545e-4f1c-80be-80bf0999d54a
+      text: I'm not fully against migration readiness being part of this, but it seems
+        like there is plenty of troubleshooting topics that can be covered that don't
+        have to do with this that can fill up 2 hours.
+      resolved: false
+      reviewer: nstephan@redhat.com
+      timestamp: '2026-08-27T08:22:46.207382+00:00'
   infra:
     peak_environments: null
-    cost_per_run_est: ""
-    provisioning_time_est: ""
-    agnosticv_base_ci: "openshift_cnv.ocp-virt-roadshow-2026"
-    approved_by: ""
+    cost_per_run_est: ''
+    provisioning_time_est: ''
+    agnosticv_base_ci: openshift_cnv.ocp-virt-roadshow-2026
+    approved_by: ''
     rejections: []
