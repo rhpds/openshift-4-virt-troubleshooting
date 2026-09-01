@@ -164,7 +164,7 @@ approval_checklist:
         Please contact Mohit Vardhani. He submitted lab LB1606 which approaches this
         well. It would be good to offer to have him join as a co-developer for this
         lab.
-      resolved: false
+      resolved: true
       reviewer: nstephan@redhat.com
       timestamp: '2026-08-27T08:22:46.207382+00:00'
     - id: 54352a8a-f66e-448e-94f8-6786341a691b
@@ -172,14 +172,14 @@ approval_checklist:
         on in the LB2076 (OpenShift Virtualization Reimagined: Hands-On with openShift
         5 Capabilities). Talk to Alan and make sure this lab is distinct enough from
         that one. His lab is the evolution of the OpenShift Virt Roadshow.'
-      resolved: false
+      resolved: true
       reviewer: nstephan@redhat.com
       timestamp: '2026-08-27T08:22:46.207382+00:00'
     - id: 79fbcff5-545e-4f1c-80be-80bf0999d54a
       text: I'm not fully against migration readiness being part of this, but it seems
         like there is plenty of troubleshooting topics that can be covered that don't
         have to do with this that can fill up 2 hours.
-      resolved: false
+      resolved: true
       reviewer: nstephan@redhat.com
       timestamp: '2026-08-27T08:22:46.207382+00:00'
   infra:
