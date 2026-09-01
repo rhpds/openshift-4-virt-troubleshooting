@@ -16,6 +16,10 @@ project:
     \ failures, live-migration failures, network isolation issues, and guest agent\
     \ synchronization gaps \u2014 finishing with a practical troubleshooting methodology\
     \ they can apply in production."
+  contributors:
+  - mvardhan@redhat.com
+  - ashsharm@redhat.com
+  - rdave@redhat.com
   jira_ticket: RHDPCD-1220
   workflow_id: f27392bf-2e90-4efe-b7a3-501af7d4eb52
 spec:
@@ -105,15 +109,14 @@ approval_checklist:
       \ (VM/VMI status, Events, pod logs, connectivity checks). Success in each lab\
       \ is proven by the VM reaching the expected running/migrated/reachable state\
       \ after the fix, not by an automated grader."
-    catalog_gap: "Existing catalog labs (ocp-virt-roadshow-2026, ocp-virt-advanced-ops)\
-      \ focus on Day 1 deployment and feature walkthroughs of OpenShift Virtualization.\
-      \ None deliver a dedicated Day 2 troubleshooting methodology across the five\
-      \ most common production failure classes \u2014 VM startup, CDI imports, live\
-      \ migration, networking, and guest agent \u2014 where students diagnose intentionally\
-      \ broken environments rather than follow happy-path steps. This lab reuses the\
-      \ ocp-virt-roadshow-2026 infrastructure base (kubevirt, mtv, nmstate, network\
-      \ bridges, roadshow VMs) but reorients the content entirely around structured\
-      \ diagnosis and remediation."
+    catalog_gap: "Existing catalog labs focus on Day 1 deployment and feature walkthroughs\
+      \ of OpenShift Virtualization on OCP 4. LB2076 (OpenShift Virtualization Reimagined)\
+      \ covers OCP 5 new capabilities \u2014 an entirely different version and learning\
+      \ goal. This lab is OCP 4 Virtualization Day 2 troubleshooting: attendees diagnose\
+      \ intentionally broken environments across the five most common production failure\
+      \ classes (VM startup, CDI imports, live migration, networking, guest agent)\
+      \ rather than following happy-path steps. No existing catalog item delivers this\
+      \ structured diagnostic methodology on OCP 4 virt."
     design_overview: 'A 120-minute intermediate, fully hands-on Day 2 operations lab.
       Attendees troubleshoot intentionally broken OpenShift Virtualization environments
       that mirror real production incidents across five labs: (1) VM stuck in Starting,
@@ -136,11 +139,12 @@ approval_checklist:
         problems, or authentication/network access failures, then configures CDI storage
         correctly.
     - title: Live Migration Failures
-      overview: Live migration fails during node maintenance due to infrastructure
-        constraints. Student analyzes migration events and validates shared storage
-        to diagnose ReadWriteOnce limitations, a missing migration network, CPU incompatibilities,
-        or SR-IOV/GPU/host-device dependencies, and applies the correct migration
-        prerequisites.
+      overview: Node-to-node live migration (within the same cluster) fails during
+        node maintenance due to infrastructure constraints. Student analyzes VirtualMachineInstanceMigration
+        events and VMI conditions to diagnose ReadWriteOnce limitations, a missing
+        migration network, CPU incompatibilities, or SR-IOV/GPU/host-device dependencies,
+        and applies the correct prerequisites to unblock migration. This is a Day 2
+        operational troubleshooting scenario, not platform or multi-cluster migration.
     - title: Network Troubleshooting
       overview: A VM is running but cannot communicate with external systems or cluster
         resources. Student inspects VM interfaces, validates Multus NetworkAttachmentDefinitions

@@ -2,11 +2,12 @@
 
 ### Brief Overview
 
-Live migration fails during node maintenance because an infrastructure prerequisite isn't
-met. The student learns to read VirtualMachineInstanceMigration events and VMI conditions,
-validate that storage is shared (ReadWriteMany), confirm a migration network exists, and
-recognize when CPU model or host-device dependencies (SR-IOV, GPU) block migration. The
-goal is to internalize the checklist of live-migration prerequisites.
+Live migration (node-to-node within the same cluster) fails during node maintenance
+because an infrastructure prerequisite isn't met. The student learns to read
+VirtualMachineInstanceMigration events and VMI conditions, validate that storage is
+shared (ReadWriteMany), confirm a migration network exists, and recognize when CPU model
+or host-device dependencies (SR-IOV, GPU) block migration. This is a Day 2 operational
+scenario — not multi-cluster or platform migration.
 
 ### Audience and Time
 
