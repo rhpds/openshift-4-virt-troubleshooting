@@ -20,8 +20,8 @@ project:
   - mvardhan@redhat.com
   - ashsharm@redhat.com
   - rdave@redhat.com
-  jira_ticket: RHDPCD-1220
-  workflow_id: f27392bf-2e90-4efe-b7a3-501af7d4eb52
+  jira_ticket: RHDPCD-1470
+  workflow_id: cc8e373f-150c-472d-a034-6ef3434613c3
 spec:
   title: 'OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production
     Failures'
