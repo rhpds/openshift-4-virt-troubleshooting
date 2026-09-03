@@ -1,11 +1,6 @@
-# openshift-5-virt
+# openshift-4-virt-troubleshooting
 
-This hands-on lab puts attendees into a realistic customer environment running virtual machines and container workloads across OpenShift. They will investigate a connectivity and infrastructure issue, use OpenShift 5 AI-assisted capabilities to help with troubleshooting, validate the findings against real cluster data, and implement the appropriate fix.
-
-The lab will also cover areas that have improved from OpenShift 4, including virtual machine networking, observability, resource optimisation, cluster management and workload mobility. Attendees will then assess a second cluster and perform a controlled workload migration.
-
-The focus is on practical consulting skills rather than a product walkthrough: understand the problem, gather evidence, make the change and prove the outcome.
-
+A 120-minute hands-on Day 2 operations lab where participants troubleshoot intentionally broken OpenShift Virtualization environments that mirror real production incidents. Rather than following predefined commands, attendees learn a structured diagnostic workflow using oc, virtctl, Kubernetes events, VirtualMachineInstance (VMI) objects, CDI resources, Multus networking, and virt-launcher logs. Across five labs, they diagnose and resolve VM startup failures, CDI/DataVolume import failures, live-migration failures, network isolation issues, and guest agent synchronization gaps — finishing with a practical troubleshooting methodology they can apply in production.
 
 **Owner:** waynedovey
 
