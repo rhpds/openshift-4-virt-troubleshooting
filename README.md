@@ -21,7 +21,7 @@ Claude will walk you through the entire content lifecycle — from intake and sp
 
 ### DevSpaces (recommended)
 
-1. Open in DevSpaces: `https://devspaces.apps.ocpv-infra02.wdc07.infra.demo.redhat.com#https://github.com/rhpds/openshift-5-virt`
+1. Open in DevSpaces: `https://devspaces.apps.ocpv-infra02.wdc07.infra.demo.redhat.com#https://github.com/rhpds/openshift-4-virt-troubleshooting`
 2. Use Claude via the **extension** or the **CLI**:
    - **Extension:** Click the **Claude** icon in the sidebar, click **New Session**. If the Claude icon is not visible, open **Extensions** (`Ctrl/Cmd+Shift+X`), find **Claude Code for VS Code** under the DevSpaces section, click it, then click **Enable (Workspace)**.
    - **CLI:** Open a terminal and run `claude`
@@ -35,8 +35,8 @@ Claude will walk you through the entire content lifecycle — from intake and sp
    ```
 2. Clone the repo:
    ```
-   git clone https://github.com/rhpds/openshift-5-virt
+   git clone https://github.com/rhpds/openshift-4-virt-troubleshooting
    ```
-3. `cd openshift-5-virt`
+3. `cd openshift-4-virt-troubleshooting`
 4. Start Claude CLI: `claude`
 5. Run `/rhdp-publishing-house` — and you're off!
