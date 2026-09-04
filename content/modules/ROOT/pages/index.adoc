@@ -1,4 +1,4 @@
-= My Lab Title
+= OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures
 
 This project was created with the RHDP Publishing House template.
 
