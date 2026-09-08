@@ -3,7 +3,15 @@ kind: Component
 metadata:
   name: openshift-4-virt-troubleshooting
   title: openshift-4-virt-troubleshooting
-  description: 'A 120-minute hands-on Day 2 operations lab where participants troubleshoot intentionally broken OpenShift Virtualization environments that mirror real production incidents. Rather than following predefined commands, attendees learn a structured diagnostic workflow using oc, virtctl, Kubernetes events, VirtualMachineInstance (VMI) objects, CDI resources, Multus networking, and virt-launcher logs. Across five labs, they diagnose and resolve VM startup failures, CDI/DataVolume import failures, live-migration failures, network isolation issues, and guest agent synchronization gaps — finishing with a practical troubleshooting methodology they can apply in production.'
+  description: "A 120-minute hands-on Day 2 operations lab where participants troubleshoot\
+    \ intentionally broken OpenShift Virtualization environments that mirror real\
+    \ production incidents. Rather than following predefined commands, attendees learn\
+    \ a structured diagnostic workflow using oc, virtctl, Kubernetes events, VirtualMachineInstance\
+    \ (VMI) objects, CDI resources, Multus networking, and virt-launcher logs. Across\
+    \ five labs, they diagnose and resolve VM startup failures, CDI/DataVolume import\
+    \ failures, live-migration failures, network isolation issues, and guest agent\
+    \ synchronization gaps \u2014 finishing with a practical troubleshooting methodology\
+    \ they can apply in production."
   annotations:
     ph.rhdp.io/content-type: lab
     ph.rhdp.io/deployment-mode: rhdp_published
@@ -27,6 +35,9 @@ metadata:
     title: Central
     icon: dashboard
   - url: https://redhat.atlassian.net/browse/RHDPCD-1220
+    title: Jira Epic
+    icon: dashboard
+  - url: https://redhat.atlassian.net/browse/RHDPCD-1470
     title: Jira Epic
     icon: dashboard
 spec:
