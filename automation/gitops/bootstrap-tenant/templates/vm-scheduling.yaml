@@ -38,21 +38,26 @@
 # mechanism is this annotation.)
 #
 # ignore-differences on domain.memory -- intended to protect the student's
-# fix (editing this VM's memory request directly) from being reverted by a
-# future auto-sync. KNOWN LIMITATION (confirmed live 2026-09-21): this
+# fix (editing this VM's memory request directly) from being reverted by
+# auto-sync. KNOWN LIMITATION, CONFIRMED BROKEN LIVE (2026-09-21): this
 # annotation was only merged into ArgoCD upstream the same day as this
-# cluster's OpenShift GitOps build (argoproj/argo-cd#29616) and empirically
-# does NOT take effect here -- the Application still reports vm-scheduling
-# OutOfSync after the student edits domain.memory. Left in place since it's
-# harmless and may start working on a newer GitOps operator build, but do
-# not rely on it: with automated.selfHeal unset (false) on the current
-# Applications, drift is only reverted by a *new* sync, not continuously, so
-# the practical risk is limited to "student's fix gets undone if a new
-# commit triggers a resync of this Application" -- not an immediate revert.
-# The durable fix is the Application's own spec.ignoreDifferences (the
-# well-established, version-independent mechanism), which is external to
-# this repo (set by whatever creates the Application, e.g. AgnosticD's
-# ocp4_workload_gitops_bootstrap role).
+# cluster's OpenShift GitOps build (argoproj/argo-cd#29616) and does NOT
+# take effect here. Watched it fail end-to-end: fixed vm-scheduling's
+# memory as the student would, the Application briefly showed it
+# OutOfSync, then a routine `argocd.argoproj.io/refresh=hard` (no new git
+# commit involved) triggered this Application's existing automated sync
+# policy and silently reverted the live value back to 999Gi. selfHeal is
+# unset (false) on these Applications, but automated sync itself is still
+# on -- so ANY trigger that makes ArgoCD re-run a sync (a refresh, a new
+# commit to this Application, an operator restart) can wipe out a
+# student's Task 1 fix, not just a future commit as previously assumed
+# here. Left the annotation in place (harmless, may start working on a
+# newer GitOps operator build) but treat this as a live, real risk, not a
+# theoretical one. The durable fix is the Application's own
+# spec.ignoreDifferences (the well-established, version-independent
+# mechanism) or disabling automated sync for tenant Applications
+# entirely -- both external to this repo (set by whatever creates the
+# Application, e.g. AgnosticD's ocp4_workload_gitops_bootstrap role).
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
