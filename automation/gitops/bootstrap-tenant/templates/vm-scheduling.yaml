@@ -18,6 +18,18 @@
 # `ocp4_workload_virt_roadshow_vms` before relying on it.
 #
 # CRD comes from CNV; SkipDryRunOnMissingResource required.
+#
+# DisableResourceHealthCheck -- this VM is *meant* to stay unhealthy
+# (Pending/unschedulable) until the student fixes it. Without this, ArgoCD's
+# generic health check reads the VMI's Ready=False condition and marks the
+# Application Degraded for the entire duration of the exercise.
+#
+# ignore-differences on domain.memory -- the student's fix is editing this
+# VM's memory request directly (`oc edit vm vm-scheduling` / Console). Without
+# this, the next auto-sync (selfHeal) overwrites their fix back to the
+# oversized value from git. Everything else on the VM stays self-healed
+# normally. See https://github.com/rhpds/rhdp-gitops-patterns/examples/tssc-platform-showcase
+# for the same per-resource annotation pattern.
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
@@ -25,7 +37,10 @@ metadata:
   namespace: {{ .Values.username }}-vm-troubleshoot
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,DisableResourceHealthCheck=true
+    argocd.argoproj.io/ignore-differences: |
+      jsonPointers:
+        - /spec/template/spec/domain/memory
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1

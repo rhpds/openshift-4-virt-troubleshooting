@@ -10,6 +10,13 @@
 # trigger the failure themselves.
 #
 # CRD comes from CNV; SkipDryRunOnMissingResource required.
+#
+# DisableResourceHealthCheck -- this VM is *meant* to stay unhealthy
+# (ImagePullBackOff) until the student fixes it, otherwise ArgoCD's generic
+# health check marks the Application Degraded for the whole exercise.
+# No ignore-differences needed here: the fix (docker-registry Secret +
+# `oc secrets link default ... --for=pull`) never touches this VM's own
+# spec, so there's nothing for selfHeal to revert.
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
@@ -17,7 +24,7 @@ metadata:
   namespace: {{ .Values.username }}-vm-troubleshoot
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,DisableResourceHealthCheck=true
 spec:
   runStrategy: Always
   template:
