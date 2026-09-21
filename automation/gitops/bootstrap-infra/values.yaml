@@ -63,3 +63,14 @@ registry:
 # replaces the *entire* registrySources.insecureRegistries list. If this
 # shared cluster already has other entries there, merge them in manually
 # before this chart is synced, or this will drop them.
+
+# Task 1 (Scheduling Failure): keeps every tenant Application's
+# spec.ignoreDifferences current so a student's memory-request fix on
+# vm-scheduling survives future auto-syncs. See
+# templates/argocd-tenant-patch/cronjob.yaml for why this is a CronJob (not
+# a one-time Job) and why it patches Applications rather than the
+# cluster-wide ArgoCD instance.
+argocdTenantPatch:
+  enabled: true
+  schedule: "*/5 * * * *"
+  image: registry.redhat.io/openshift4/ose-cli:latest

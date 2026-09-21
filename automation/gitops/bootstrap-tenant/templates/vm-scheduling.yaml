@@ -37,27 +37,20 @@
 # https://argo-cd.readthedocs.io/en/stable/operator-manual/health/, the real
 # mechanism is this annotation.)
 #
-# ignore-differences on domain.memory -- intended to protect the student's
-# fix (editing this VM's memory request directly) from being reverted by
-# auto-sync. KNOWN LIMITATION, CONFIRMED BROKEN LIVE (2026-09-21): this
-# annotation was only merged into ArgoCD upstream the same day as this
-# cluster's OpenShift GitOps build (argoproj/argo-cd#29616) and does NOT
-# take effect here. Watched it fail end-to-end: fixed vm-scheduling's
-# memory as the student would, the Application briefly showed it
-# OutOfSync, then a routine `argocd.argoproj.io/refresh=hard` (no new git
-# commit involved) triggered this Application's existing automated sync
-# policy and silently reverted the live value back to 999Gi. selfHeal is
-# unset (false) on these Applications, but automated sync itself is still
-# on -- so ANY trigger that makes ArgoCD re-run a sync (a refresh, a new
-# commit to this Application, an operator restart) can wipe out a
-# student's Task 1 fix, not just a future commit as previously assumed
-# here. Left the annotation in place (harmless, may start working on a
-# newer GitOps operator build) but treat this as a live, real risk, not a
-# theoretical one. The durable fix is the Application's own
-# spec.ignoreDifferences (the well-established, version-independent
-# mechanism) or disabling automated sync for tenant Applications
-# entirely -- both external to this repo (set by whatever creates the
-# Application, e.g. AgnosticD's ocp4_workload_gitops_bootstrap role).
+# Protecting the student's memory-request fix from a future auto-sync is
+# handled at the Application level, not here. A per-resource
+# argocd.argoproj.io/ignore-differences annotation was tried first and
+# confirmed BROKEN live (2026-09-21): it was only merged into ArgoCD
+# upstream the same day as this cluster's OpenShift GitOps build, and
+# watching it fail end-to-end proved it -- fixed this VM's memory as a
+# student would, then a routine refresh (no new git commit) triggered this
+# Application's existing automated sync and silently reverted the live
+# value back to 999Gi. The working, version-independent mechanism is the
+# Application's own spec.ignoreDifferences field (already used by the
+# deployer for other entries, confirmed functioning) -- see
+# ../../bootstrap-infra/templates/argocd-tenant-patch/ for the CronJob that
+# keeps every tenant Application's ignoreDifferences current with the entry
+# this VM needs.
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
@@ -67,9 +60,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/ignore-healthcheck: "true"
-    argocd.argoproj.io/ignore-differences: |
-      jsonPointers:
-        - /spec/template/spec/domain/memory
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1
