@@ -1,0 +1,60 @@
+# PostSync hook: patches this tenant's own Application object so ArgoCD
+# stops reverting the student's memory-request fix on vm-scheduling.
+#
+# CORRECTION (confirmed live 2026-09-21): a per-resource
+# argocd.argoproj.io/ignore-differences annotation on the VM itself (see
+# ../vm-scheduling.yaml) does not take effect on this cluster's ArgoCD
+# build. The working, version-independent mechanism is the Application's
+# own spec.ignoreDifferences field -- already used by the deployer for
+# other entries (confirmed present and functioning on every tenant
+# Application). This Job keeps that field current with the entry this
+# module needs.
+#
+# Runs as a PostSync hook of THIS tenant's own Application -- naturally
+# covers this tenant the moment it's deployed (not a cluster-wide cron
+# scanning for tenants after the fact), and re-runs idempotently on any
+# future re-sync of this same Application. Uses a targeted JSON Patch "add"
+# (append, or create the array if absent) rather than a full apply of
+# spec.ignoreDifferences, since that field has no merge-key semantics and a
+# full apply would wipe the deployer's own existing entries (two ConfigMap
+# entries observed live on every tenant Application).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: argocd-self-patch
+  namespace: {{ .Values.username }}-vm-troubleshoot
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      serviceAccountName: argocd-self-patch
+      restartPolicy: Never
+      containers:
+        - name: patch
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              app=bootstrap-{{ .Values.deployer.guid }}
+              patch_value='{"group":"kubevirt.io","kind":"VirtualMachine","name":"vm-scheduling","jsonPointers":["/spec/template/spec/domain/memory"]}'
+              current=$(oc get application "$app" -n openshift-gitops -o jsonpath='{.spec.ignoreDifferences}')
+              case "$current" in
+                *vm-scheduling*)
+                  echo "skip $app: already patched"
+                  ;;
+                "")
+                  echo "patch $app: creating ignoreDifferences array"
+                  oc patch application "$app" -n openshift-gitops --type=json \
+                    -p="[{\"op\":\"add\",\"path\":\"/spec/ignoreDifferences\",\"value\":[$patch_value]}]"
+                  ;;
+                *)
+                  echo "patch $app: appending to existing ignoreDifferences"
+                  oc patch application "$app" -n openshift-gitops --type=json \
+                    -p="[{\"op\":\"add\",\"path\":\"/spec/ignoreDifferences/-\",\"value\":$patch_value}]"
+                  ;;
+              esac

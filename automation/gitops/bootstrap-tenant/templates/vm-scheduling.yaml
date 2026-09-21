@@ -48,9 +48,8 @@
 # value back to 999Gi. The working, version-independent mechanism is the
 # Application's own spec.ignoreDifferences field (already used by the
 # deployer for other entries, confirmed functioning) -- see
-# ../../bootstrap-infra/templates/argocd-tenant-patch/ for the CronJob that
-# keeps every tenant Application's ignoreDifferences current with the entry
-# this VM needs.
+# ../argocd-self-patch/ for the PostSync hook Job that keeps this tenant's
+# own Application's ignoreDifferences current with the entry this VM needs.
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
