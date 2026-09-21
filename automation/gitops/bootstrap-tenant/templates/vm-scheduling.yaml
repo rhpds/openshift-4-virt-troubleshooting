@@ -37,12 +37,22 @@
 # https://argo-cd.readthedocs.io/en/stable/operator-manual/health/, the real
 # mechanism is this annotation.)
 #
-# ignore-differences on domain.memory -- the student's fix is editing this
-# VM's memory request directly (`oc edit vm vm-scheduling` / Console). Without
-# this, the next auto-sync (selfHeal) overwrites their fix back to the
-# oversized value from git. Everything else on the VM stays self-healed
-# normally. See https://github.com/rhpds/rhdp-gitops-patterns/examples/tssc-platform-showcase
-# for the same per-resource annotation pattern.
+# ignore-differences on domain.memory -- intended to protect the student's
+# fix (editing this VM's memory request directly) from being reverted by a
+# future auto-sync. KNOWN LIMITATION (confirmed live 2026-09-21): this
+# annotation was only merged into ArgoCD upstream the same day as this
+# cluster's OpenShift GitOps build (argoproj/argo-cd#29616) and empirically
+# does NOT take effect here -- the Application still reports vm-scheduling
+# OutOfSync after the student edits domain.memory. Left in place since it's
+# harmless and may start working on a newer GitOps operator build, but do
+# not rely on it: with automated.selfHeal unset (false) on the current
+# Applications, drift is only reverted by a *new* sync, not continuously, so
+# the practical risk is limited to "student's fix gets undone if a new
+# commit triggers a resync of this Application" -- not an immediate revert.
+# The durable fix is the Application's own spec.ignoreDifferences (the
+# well-established, version-independent mechanism), which is external to
+# this repo (set by whatever creates the Application, e.g. AgnosticD's
+# ocp4_workload_gitops_bootstrap role).
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
