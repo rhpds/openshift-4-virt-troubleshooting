@@ -1,0 +1,99 @@
+# Generated from https://github.com/rhpds/rhdp-gitops-patterns/examples/ocp-virt-lab
+# (VM shape) adapted for Task 1: Scheduling Failure (Resource Constraints).
+#
+# dedicatedCpuPlacement requires the static CPU manager KubeletConfig from
+# bootstrap-infra. The oversized memory request below (not the CPU pinning
+# itself) is what makes this unschedulable on any node -- the fix is
+# lowering it, matching the module's documented fix path.
+#
+# runStrategy: Always -- the student must find the VM already stuck, not
+# trigger the failure themselves (matches the module outline's step 1:
+# "List VMs and note the VM stuck in Starting").
+#
+# ASSUMPTION -- flagged for review: the dataVolumeTemplate sourceRef assumes
+# the cluster has the default CNV boot-source import enabled, so the
+# "fedora" DataSource exists in openshift-virtualization-os-images. If the
+# base CI doesn't enable common boot images, this DataVolume will hang
+# instead of producing the intended scheduling fault -- verify against
+# `ocp4_workload_virt_roadshow_vms` before relying on it.
+#
+# CRD comes from CNV; SkipDryRunOnMissingResource required.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-scheduling
+  namespace: {{ .Values.username }}-vm-troubleshoot
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: vm-scheduling-disk
+      spec:
+        sourceRef:
+          kind: DataSource
+          name: fedora
+          namespace: openshift-virtualization-os-images
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+  runStrategy: Always
+  template:
+    metadata:
+      annotations:
+        vm.kubevirt.io/flavor: small
+        vm.kubevirt.io/os: fedora
+        vm.kubevirt.io/workload: server
+      labels:
+        kubevirt.io/domain: vm-scheduling
+    spec:
+      architecture: amd64
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+          dedicatedCpuPlacement: true
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - masquerade: {}
+              name: default
+          rng: {}
+        features:
+          acpi: {}
+          smm:
+            enabled: true
+        firmware:
+          bootloader:
+            efi: {}
+        machine:
+          type: pc-q35-rhel9.4.0
+        memory:
+          guest: {{ .Values.vmScheduling.memory }}
+        resources: {}
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 180
+      volumes:
+        - dataVolume:
+            name: vm-scheduling-disk
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: redhat
+              chpasswd: { expire: False }
+          name: cloudinitdisk

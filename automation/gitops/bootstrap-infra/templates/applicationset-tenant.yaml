@@ -1,0 +1,38 @@
+# Disabled by default.
+# Skill rule: never enable this ApplicationSet; never add a tenant: key to values.yaml. Manual use only.
+
+{{- if .Values.tenant -}}
+{{- $userCount := int .Values.user.count -}}
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tenants
+  namespace: openshift-gitops
+spec:
+  generators:
+  - list:
+      elements:
+      {{- range $index := until $userCount }}
+      - user: {{ $.Values.user.prefix }}{{ add $index 1 }}
+      {{- end }}
+  template:
+    metadata:
+      name: tenant-{{`{{ user }}`}}
+    spec:
+      project: default
+      source:
+        repoURL: {{ .Values.tenant.git.url }}
+        targetRevision: {{ .Values.tenant.git.revision }}
+        path: {{ .Values.tenant.git.path }}
+        helm:
+          values: |
+            username: '{{`{{ user }}`}}'
+            deployer:
+              domain: {{ .Values.deployer.domain | default "apps.cluster.example.com" }}
+      destination:
+        server: https://kubernetes.default.svc
+      syncPolicy:
+        automated:
+          prune: false
+          selfHeal: false
+{{- end }}

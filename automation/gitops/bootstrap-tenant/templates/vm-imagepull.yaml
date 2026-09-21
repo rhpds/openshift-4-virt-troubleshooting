@@ -1,0 +1,71 @@
+# Task 2: Container Disk Image Pull Failure.
+#
+# containerDisk points at the shared private registry provisioned by
+# bootstrap-infra (see ../bootstrap-infra/templates/registry/). No pull
+# secret is linked in this namespace -- the student must create a
+# docker-registry Secret from the shared registry credential and link it to
+# the default ServiceAccount before this VM can start.
+#
+# runStrategy: Always -- the student must find the VM already stuck, not
+# trigger the failure themselves.
+#
+# CRD comes from CNV; SkipDryRunOnMissingResource required.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-imagepull
+  namespace: {{ .Values.username }}-vm-troubleshoot
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      annotations:
+        vm.kubevirt.io/flavor: small
+        vm.kubevirt.io/os: centos-stream9
+        vm.kubevirt.io/workload: server
+      labels:
+        kubevirt.io/domain: vm-imagepull
+    spec:
+      architecture: amd64
+      domain:
+        cpu:
+          cores: 1
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: containerdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - masquerade: {}
+              name: default
+          rng: {}
+        features:
+          acpi: {}
+        machine:
+          type: pc-q35-rhel9.4.0
+        memory:
+          guest: 2Gi
+        resources: {}
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 180
+      volumes:
+        - name: containerdisk
+          containerDisk:
+            image: vm-registry.{{ .Values.registryNamespace }}.svc.cluster.local:5000/{{ .Values.registryImagePath }}:{{ .Values.registryImageTag }}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: redhat
+              chpasswd: { expire: False }
+          name: cloudinitdisk

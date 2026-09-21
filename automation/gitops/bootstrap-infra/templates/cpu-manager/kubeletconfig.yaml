@@ -1,0 +1,24 @@
+{{- if .Values.cpuManager.enabled }}
+# Task 1 (Scheduling Failure): static CPU manager on the standard `worker`
+# MachineConfigPool. No custom MachineConfigPool and no node labeling by
+# hostname -- this targets every worker node via the MCO's built-in pool
+# label, so it works regardless of cluster size and doesn't create a
+# single-node bottleneck for concurrent students.
+#
+# The actual induced scheduling failure comes from the per-student VM's
+# oversized memory request (see bootstrap-tenant), not from this policy
+# itself -- matches the module's fix path of lowering the memory request.
+apiVersion: machineconfiguration.openshift.io/v1
+kind: KubeletConfig
+metadata:
+  name: vm-troubleshoot-static-cpu-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  machineConfigPoolSelector:
+    matchLabels:
+      pools.operator.machineconfiguration.openshift.io/worker: ""
+  kubeletConfig:
+    cpuManagerPolicy: static
+    cpuManagerReconcilePeriod: 10s
+{{- end }}

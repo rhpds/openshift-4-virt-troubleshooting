@@ -1,4 +1,25 @@
+# Auto-injected by the deployer. Do not pass these manually.
 deployer:
-  domain: apps.example.com
+  domain: apps.cluster.example.com
+  apiUrl: https://api.cluster.example.com:6443
+  guid: xxxxx
 
 username: user1
+
+namespaces:
+  - vm-troubleshoot
+
+# Must match bootstrap-infra's registry.* defaults (see
+# ../bootstrap-infra/values.yaml) -- infra and tenant are deployed as
+# separate ArgoCD Applications with no shared Helm state. If the infra
+# chart's registry namespace/image path/tag are overridden at deploy time,
+# override these to match.
+registryNamespace: vm-registry
+registryImagePath: vm-images/centos-stream9
+registryImageTag: latest
+
+# Task 1 (Scheduling Failure): deliberately larger than any node in this
+# cluster can satisfy, so the VM can never be scheduled. The fix is lowering
+# this value, not the dedicatedCpuPlacement setting.
+vmScheduling:
+  memory: 999Gi

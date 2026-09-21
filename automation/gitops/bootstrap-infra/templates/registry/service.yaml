@@ -1,0 +1,15 @@
+{{- if .Values.registry.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm-registry
+  namespace: {{ .Values.registry.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  selector:
+    app: vm-registry
+  ports:
+    - port: 5000
+      targetPort: 5000
+{{- end }}

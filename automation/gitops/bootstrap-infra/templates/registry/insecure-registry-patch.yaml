@@ -1,0 +1,20 @@
+{{- if .Values.registry.enabled }}
+# Our registry serves plain HTTP (no TLS cert configured on the container),
+# so nodes must be told to trust it as insecure -- otherwise CRI-O refuses to
+# pull the containerDisk image referenced by the "vm-imagepull" tenant VM.
+#
+# ASSUMPTION -- flagged for review: this REPLACES the entire
+# spec.registrySources.insecureRegistries list on this cluster-wide singleton.
+# If other insecure registries are already configured here, merge them into
+# this list manually before syncing this chart.
+apiVersion: config.openshift.io/v1
+kind: Image
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  registrySources:
+    insecureRegistries:
+      - {{ include "vmtroubleshoot.registryHost" . }}
+{{- end }}
