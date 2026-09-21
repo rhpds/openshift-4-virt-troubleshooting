@@ -1,7 +1,13 @@
 {{- if .Values.registry.enabled }}
-# Our registry serves plain HTTP (no TLS cert configured on the container),
-# so nodes must be told to trust it as insecure -- otherwise CRI-O refuses to
-# pull the containerDisk image referenced by the "vm-imagepull" tenant VM.
+# Nodes must be told to trust the registry's Route as insecure -- its edge
+# Route (route.yaml) terminates TLS with the router's own certificate
+# (typically self-signed on RHDP clusters), and CRI-O will otherwise refuse
+# to pull the containerDisk image referenced by the "vm-imagepull" tenant VM.
+#
+# CORRECTION (confirmed live 2026-09-21): this used to list the in-cluster
+# Service DNS host (vmtroubleshoot.registryHost). That's irrelevant here --
+# node-level image pulls can't resolve it at all (see route.yaml) -- so this
+# now lists the externally-resolvable Route host that pulls actually target.
 #
 # ASSUMPTION -- flagged for review: this REPLACES the entire
 # spec.registrySources.insecureRegistries list on this cluster-wide singleton.
@@ -16,5 +22,5 @@ metadata:
 spec:
   registrySources:
     insecureRegistries:
-      - {{ include "vmtroubleshoot.registryHost" . }}
+      - {{ include "vmtroubleshoot.registryExternalHost" . }}
 {{- end }}

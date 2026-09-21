@@ -10,19 +10,32 @@
 # trigger the failure themselves (matches the module outline's step 1:
 # "List VMs and note the VM stuck in Starting").
 #
-# ASSUMPTION -- flagged for review: the dataVolumeTemplate sourceRef assumes
-# the cluster has the default CNV boot-source import enabled, so the
-# "fedora" DataSource exists in openshift-virtualization-os-images. If the
-# base CI doesn't enable common boot images, this DataVolume will hang
-# instead of producing the intended scheduling fault -- verify against
-# `ocp4_workload_virt_roadshow_vms` before relying on it.
+# The dataVolumeTemplate sourceRef assumes the cluster has the default CNV
+# boot-source import enabled, so the "fedora" DataSource exists in
+# openshift-virtualization-os-images -- confirmed Ready on this cluster
+# (2026-09-21), but re-verify on any base CI that doesn't enable common boot
+# images (`ocp4_workload_virt_roadshow_vms`), since this DataVolume would
+# otherwise hang instead of producing the intended scheduling fault.
+#
+# evictionStrategy: None -- confirmed live (2026-09-21) that this cluster's
+# HyperConverged default is LiveMigrate. This VM can never live-migrate
+# (dedicatedCpuPlacement + local DataVolume), so with the default, any node
+# drain targeting it hangs forever instead of just deleting/rescheduling the
+# pod -- observed live: it wedged the CPU-manager KubeletConfig's
+# MachineConfigPool rollout (drain stuck >1h on a stuck vm-imagepull pod on
+# another VM with the same inherited default). Explicit None avoids blocking
+# cluster maintenance for every non-migratable lab VM.
 #
 # CRD comes from CNV; SkipDryRunOnMissingResource required.
 #
-# DisableResourceHealthCheck -- this VM is *meant* to stay unhealthy
+# ignore-healthcheck -- this VM is *meant* to stay unhealthy
 # (Pending/unschedulable) until the student fixes it. Without this, ArgoCD's
 # generic health check reads the VMI's Ready=False condition and marks the
-# Application Degraded for the entire duration of the exercise.
+# Application Degraded for the entire duration of the exercise. (Correction:
+# an earlier version of this file used a "DisableResourceHealthCheck" sync
+# option that doesn't exist in ArgoCD -- verified against
+# https://argo-cd.readthedocs.io/en/stable/operator-manual/health/, the real
+# mechanism is this annotation.)
 #
 # ignore-differences on domain.memory -- the student's fix is editing this
 # VM's memory request directly (`oc edit vm vm-scheduling` / Console). Without
@@ -37,7 +50,8 @@ metadata:
   namespace: {{ .Values.username }}-vm-troubleshoot
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,DisableResourceHealthCheck=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/ignore-healthcheck: "true"
     argocd.argoproj.io/ignore-differences: |
       jsonPointers:
         - /spec/template/spec/domain/memory
@@ -67,6 +81,7 @@ spec:
         kubevirt.io/domain: vm-scheduling
     spec:
       architecture: amd64
+      evictionStrategy: None
       domain:
         cpu:
           cores: 2

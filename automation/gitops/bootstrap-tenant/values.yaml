@@ -12,9 +12,10 @@ namespaces:
 # Must match bootstrap-infra's registry.* defaults (see
 # ../bootstrap-infra/values.yaml) -- infra and tenant are deployed as
 # separate ArgoCD Applications with no shared Helm state. If the infra
-# chart's registry namespace/image path/tag are overridden at deploy time,
-# override these to match.
-registryNamespace: vm-registry
+# chart's image path/tag are overridden at deploy time, override these to
+# match. The registry host itself is derived from deployer.domain (its
+# Route, not a values entry -- see vm-imagepull.yaml) since node-level
+# containerDisk pulls can't resolve in-cluster Service DNS.
 registryImagePath: vm-images/centos-stream9
 registryImageTag: latest
 

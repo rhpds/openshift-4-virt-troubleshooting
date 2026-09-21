@@ -23,9 +23,11 @@ cpuManager:
 
 # Task 2 (Container Disk Image Pull Failure): a small in-cluster private
 # registry hosting the VM container-disk image, shared by every student.
-# Only reachable in-cluster via its Service -- no Route is created, since
-# the exercise only needs the image to be pullable by nodes and by students'
-# own pull secrets, not externally browsable.
+# CORRECTION (confirmed live 2026-09-21): this used to say no Route was
+# needed since only nodes need to pull the image, not browse it externally.
+# That's backwards -- node-level image pulls are exactly what needs a Route
+# (see templates/registry/route.yaml): CRI-O pulls using the node's own DNS,
+# which cannot resolve the in-cluster Service DNS at all.
 registry:
   enabled: true
   namespace: vm-registry

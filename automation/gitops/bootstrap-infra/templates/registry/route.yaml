@@ -1,0 +1,33 @@
+{{- if .Values.registry.enabled }}
+# Exposes vm-registry externally via the cluster's ingress domain.
+#
+# CORRECTION (confirmed live 2026-09-21): the original design assumed the
+# registry only needed to be reachable in-cluster ("no Route is created,
+# since the exercise only needs the image to be pullable by nodes and by
+# students' own pull secrets, not externally browsable" -- see
+# ../../values.yaml). That assumption was wrong: node-level CRI-O image
+# pulls use the node's own DNS, which cannot resolve the in-cluster Service
+# DNS at all (every worker failed with "no such host" pulling the
+# containerDisk image). A Route is the only way to give nodes a hostname
+# they can actually resolve and reach. Edge termination matches the
+# registry's plain-HTTP backend (no TLS cert on the container itself); see
+# insecure-registry-patch.yaml for why CRI-O still needs to be told to trust
+# this host.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: vm-registry
+  namespace: {{ .Values.registry.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  host: {{ include "vmtroubleshoot.registryExternalHost" . }}
+  to:
+    kind: Service
+    name: vm-registry
+  port:
+    targetPort: 5000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+{{- end }}

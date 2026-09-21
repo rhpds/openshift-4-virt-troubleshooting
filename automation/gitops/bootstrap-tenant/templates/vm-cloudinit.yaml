@@ -7,19 +7,26 @@
 # runStrategy: Always -- the student must find the VM already stuck, not
 # trigger the failure themselves.
 #
-# ASSUMPTION -- flagged for review: the dataVolumeTemplate sourceRef assumes
-# the cluster has the default CNV boot-source import enabled, so the
-# "fedora" DataSource exists in openshift-virtualization-os-images (same
-# assumption as vm-scheduling.yaml).
+# The dataVolumeTemplate sourceRef assumes the cluster has the default CNV
+# boot-source import enabled, so the "fedora" DataSource exists in
+# openshift-virtualization-os-images -- confirmed Ready on this cluster
+# (2026-09-21), same as vm-scheduling.yaml.
+#
+# evictionStrategy: None -- see vm-scheduling.yaml for why (confirmed live:
+# a sibling VM's stuck pod under this cluster's default LiveMigrate strategy
+# wedged a node's MCO drain for over an hour).
 #
 # CRD comes from CNV; SkipDryRunOnMissingResource required.
 #
-# DisableResourceHealthCheck -- this VM is *meant* to stay unhealthy
+# ignore-healthcheck -- this VM is *meant* to stay unhealthy
 # (FailedMount on the missing secret) until the student fixes it, otherwise
 # ArgoCD's generic health check marks the Application Degraded for the whole
-# exercise. No ignore-differences needed here: the fix is creating the
-# missing `user-credentials` Secret, never editing this VM's own spec, so
-# there's nothing for selfHeal to revert.
+# exercise. (Correction: an earlier version used a "DisableResourceHealthCheck"
+# sync option that doesn't exist in ArgoCD -- see vm-scheduling.yaml for the
+# verified real mechanism.)
+# No ignore-differences needed here: the fix is creating the missing
+# `user-credentials` Secret, never editing this VM's own spec, so there's
+# nothing for selfHeal to revert.
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
@@ -27,7 +34,8 @@ metadata:
   namespace: {{ .Values.username }}-vm-troubleshoot
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,DisableResourceHealthCheck=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/ignore-healthcheck: "true"
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1
@@ -54,6 +62,7 @@ spec:
         kubevirt.io/domain: vm-cloudinit
     spec:
       architecture: amd64
+      evictionStrategy: None
       domain:
         cpu:
           cores: 1
