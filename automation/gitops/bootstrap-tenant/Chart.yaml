@@ -1,5 +1,0 @@
-apiVersion: v2
-name: bootstrap-tenant
-description: Per-student pre-provisioned broken VMs for the "VM Stuck in Starting" troubleshooting module
-type: application
-version: 0.1.0
