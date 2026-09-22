@@ -2,7 +2,7 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm-cloudinit
-  namespace: {{ username }}-vm-troubleshoot
+  namespace: {{ bootstrap_tenant_username }}-vm-troubleshoot
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1

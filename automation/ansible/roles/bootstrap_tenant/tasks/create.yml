@@ -6,7 +6,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ username }}-vm-troubleshoot"
+        name: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
 
 - name: Grant tenant edit access
   kubernetes.core.k8s:
@@ -15,8 +15,8 @@
       apiVersion: rbac.authorization.k8s.io/v1
       kind: RoleBinding
       metadata:
-        name: "{{ username }}-edit"
-        namespace: "{{ username }}-vm-troubleshoot"
+        name: "{{ bootstrap_tenant_username }}-edit"
+        namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
@@ -24,7 +24,7 @@
       subjects:
         - apiGroup: rbac.authorization.k8s.io
           kind: User
-          name: "{{ username }}"
+          name: "{{ bootstrap_tenant_username }}"
 
 - name: "Deploy broken VM - Task 1: scheduling failure"
   kubernetes.core.k8s:

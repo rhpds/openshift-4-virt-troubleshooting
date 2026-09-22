@@ -1,7 +1,7 @@
 ---
-username: user1
-cluster_domain: apps.cluster.example.com
-registry_image_path: vm-images/centos-stream9
-registry_image_tag: latest
-vm_scheduling_memory: 999Gi
+bootstrap_tenant_username: user1
+bootstrap_tenant_cluster_domain: apps.cluster.example.com
+bootstrap_tenant_registry_image_path: vm-images/centos-stream9
+bootstrap_tenant_registry_image_tag: latest
+bootstrap_tenant_vm_scheduling_memory: 999Gi
 bootstrap_tenant_state: present

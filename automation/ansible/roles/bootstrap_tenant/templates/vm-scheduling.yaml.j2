@@ -2,7 +2,7 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm-scheduling
-  namespace: {{ username }}-vm-troubleshoot
+  namespace: {{ bootstrap_tenant_username }}-vm-troubleshoot
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1
@@ -60,7 +60,7 @@ spec:
         machine:
           type: pc-q35-rhel9.4.0
         memory:
-          guest: {{ vm_scheduling_memory }}
+          guest: {{ bootstrap_tenant_vm_scheduling_memory }}
         resources: {}
       networks:
         - name: default

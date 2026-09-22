@@ -2,7 +2,7 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm-imagepull
-  namespace: {{ username }}-vm-troubleshoot
+  namespace: {{ bootstrap_tenant_username }}-vm-troubleshoot
 spec:
   runStrategy: Always
   template:
@@ -49,7 +49,7 @@ spec:
         # in-cluster DNS, so this must point at the registry's external Route host.
         - name: containerdisk
           containerDisk:
-            image: vm-registry.{{ cluster_domain }}/{{ registry_image_path }}:{{ registry_image_tag }}
+            image: vm-registry.{{ bootstrap_tenant_cluster_domain }}/{{ bootstrap_tenant_registry_image_path }}:{{ bootstrap_tenant_registry_image_tag }}
         - cloudInitNoCloud:
             userData: |-
               #cloud-config
