@@ -6,7 +6,7 @@ project:
   initiative_key: rh1_2027
   showroom_type: classic
   intake_type: new
-  automation_type: gitops
+  automation_type: both
   description: "A 120-minute hands-on Day 2 operations lab where participants troubleshoot\
     \ intentionally broken OpenShift Virtualization environments that mirror real\
     \ production incidents. Rather than following predefined commands, attendees learn\
@@ -90,6 +90,8 @@ spec:
 development:
   automation:
     gitops:
+      status: in_progress
+    ansible:
       status: in_progress
   e2e:
     status: not_started

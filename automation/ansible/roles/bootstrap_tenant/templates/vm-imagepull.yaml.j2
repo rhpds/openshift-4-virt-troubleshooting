@@ -1,0 +1,59 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-imagepull
+  namespace: {{ bootstrap_tenant_username }}-vm-troubleshoot
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      annotations:
+        vm.kubevirt.io/flavor: small
+        vm.kubevirt.io/os: centos-stream9
+        vm.kubevirt.io/workload: server
+      labels:
+        kubevirt.io/domain: vm-imagepull
+    spec:
+      architecture: amd64
+      evictionStrategy: None
+      domain:
+        cpu:
+          cores: 1
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: containerdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - masquerade: {}
+              name: default
+          rng: {}
+        features:
+          acpi: {}
+        machine:
+          type: pc-q35-rhel9.4.0
+        memory:
+          guest: 2Gi
+        resources: {}
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 180
+      volumes:
+        # Node-level containerDisk pulls resolve via the node's own network, not
+        # in-cluster DNS, so this must point at the registry's external Route host.
+        - name: containerdisk
+          containerDisk:
+            image: vm-registry.{{ bootstrap_tenant_cluster_domain }}/{{ bootstrap_tenant_registry_image_path }}:{{ bootstrap_tenant_registry_image_tag }}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: redhat
+              chpasswd: { expire: False }
+          name: cloudinitdisk

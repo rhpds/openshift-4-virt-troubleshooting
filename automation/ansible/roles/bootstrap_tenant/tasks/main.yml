@@ -1,0 +1,6 @@
+---
+- ansible.builtin.include_tasks: create.yml
+  when: bootstrap_tenant_state == 'present'
+
+- ansible.builtin.include_tasks: remove.yml
+  when: bootstrap_tenant_state == 'absent'

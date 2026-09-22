@@ -1,0 +1,12 @@
+---
+namespace: "openshift_4_virt_troubleshooting"
+name: "automation"
+version: "1.0.0"
+readme: README.md
+authors:
+  - "juliano"
+description: "Ansible collection for openshift-4-virt-troubleshooting lab automation."
+license: []
+repository: "https://github.com/rhpds/openshift-4-virt-troubleshooting"
+dependencies:
+  kubernetes.core: ">=2.0.0"
