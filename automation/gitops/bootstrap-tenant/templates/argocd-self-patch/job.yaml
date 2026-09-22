@@ -1,5 +1,6 @@
-# PostSync hook: patches this tenant's own Application object so ArgoCD
-# stops reverting the student's memory-request fix on vm-scheduling.
+# Sync-phase hook (NOT PostSync -- see correction below): patches this
+# tenant's own Application object so ArgoCD stops reverting the student's
+# memory-request fix on vm-scheduling.
 #
 # CORRECTION (confirmed live 2026-09-21): a per-resource
 # argocd.argoproj.io/ignore-differences annotation on the VM itself (see
@@ -10,21 +11,37 @@
 # Application). This Job keeps that field current with the entry this
 # module needs.
 #
-# Runs as a PostSync hook of THIS tenant's own Application -- naturally
-# covers this tenant the moment it's deployed (not a cluster-wide cron
-# scanning for tenants after the fact), and re-runs idempotently on any
-# future re-sync of this same Application. Uses a targeted JSON Patch "add"
-# (append, or create the array if absent) rather than a full apply of
-# spec.ignoreDifferences, since that field has no merge-key semantics and a
-# full apply would wipe the deployer's own existing entries (two ConfigMap
-# entries observed live on every tenant Application).
+# CORRECTION #2 (confirmed live 2026-09-21): this was originally a PostSync
+# hook. PostSync hooks require every other resource in the Application to
+# be Healthy first -- that's inherent to PostSync semantics, not something
+# argocd.argoproj.io/ignore-healthcheck affects (that annotation only
+# excludes a resource from the *steady-state* Application health badge, not
+# from hook-gating). Since these VMs are permanently broken by design, a
+# PostSync hook here gets stuck forever on every sync after the first --
+# watched it happen live: the Application sat in "Syncing" /
+# "waiting for healthy state of ...VirtualMachine/vm-cloudinit and 1 more
+# resources" indefinitely after a routine re-sync, even though every
+# resource's own sync status was already Synced. Using a plain Sync-phase
+# hook at sync-wave "0" instead -- ordered *before* the VMs (wave "1") --
+# means this only has to wait for wave "-1" (RBAC, no health concept) to
+# finish, and completes on Job success alone, never touching VM health.
+#
+# Runs on every sync of THIS tenant's own Application -- naturally covers
+# this tenant the moment it's deployed (not a cluster-wide cron scanning
+# for tenants after the fact), and re-runs idempotently on every future
+# re-sync. Uses a targeted JSON Patch "add" (append, or create the array if
+# absent) rather than a full apply of spec.ignoreDifferences, since that
+# field has no merge-key semantics and a full apply would wipe the
+# deployer's own existing entries (two ConfigMap entries observed live on
+# every tenant Application).
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: argocd-self-patch
   namespace: {{ .Values.username }}-vm-troubleshoot
   annotations:
-    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/sync-wave: "0"
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
 spec:
   backoffLimit: 2
