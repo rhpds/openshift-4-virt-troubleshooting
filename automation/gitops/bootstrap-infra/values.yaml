@@ -4,13 +4,6 @@ deployer:
   apiUrl: https://api.cluster.example.com:6443
   guid: xxxxx
 
-# Shared namespace for tenant cleanup jobs. Set to "" to disable.
-tenantLifecycle: ""
-# tenantLifecycle:
-#   namespace: tenant-lifecycle
-
-# --- "Lab 1: VM Stuck in Starting" module ---
-
 # Task 1 (Scheduling Failure): static CPU manager on the standard `worker`
 # MachineConfigPool -- no custom pool, no hardcoded node hostnames, so it
 # applies uniformly regardless of how many workers this cluster has.
