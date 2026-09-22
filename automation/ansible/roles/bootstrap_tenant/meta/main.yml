@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  author: "juliano"
+  description: >-
+    Provisions the per-tenant namespace, RBAC, and deliberately-broken VMs for the
+    VM Stuck in Starting troubleshooting module.
+  license: "GPL-2.0-or-later"
+  min_ansible_version: "2.14"
+dependencies: []
