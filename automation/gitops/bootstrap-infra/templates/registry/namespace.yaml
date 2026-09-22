@@ -1,6 +1,8 @@
+{{- if .Values.registry.enabled }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: gitops-test
+  name: {{ .Values.registry.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
+{{- end }}

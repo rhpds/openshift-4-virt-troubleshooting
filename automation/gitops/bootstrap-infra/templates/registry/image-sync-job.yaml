@@ -1,0 +1,31 @@
+{{- if .Values.registry.enabled }}
+# One-shot mirror of the public source image into the private registry, so
+# every student's "vm-imagepull" VM pulls from the same in-cluster source.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vm-registry-image-sync
+  namespace: {{ .Values.registry.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: skopeo-copy
+          image: {{ .Values.registry.syncImage }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              skopeo copy --retry-times 3 --remove-signatures \
+                --dest-creds {{ .Values.registry.auth.username }}:{{ .Values.registry.auth.password }} \
+                --dest-tls-verify=false \
+                docker://{{ .Values.registry.sourceImage }} \
+                docker://{{ include "vmtroubleshoot.registryHost" . }}/{{ .Values.registry.imagePath }}:{{ .Values.registry.imageTag }}
+{{- end }}
