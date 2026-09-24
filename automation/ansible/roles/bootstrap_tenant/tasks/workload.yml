@@ -3,6 +3,7 @@
   ansible.builtin.debug:
     msg:
       username: "{{ bootstrap_tenant_username }}"
+      domain: "{{ openshift_cluster_ingress_domain }}"
       _agnosticd_user_data: "{{ lookup('agnosticd.core.agnosticd_user_data', '*') }}"
 
 - name: Look up cluster apps domain from AgnosticD user data
