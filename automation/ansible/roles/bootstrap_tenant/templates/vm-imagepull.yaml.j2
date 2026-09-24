@@ -47,7 +47,7 @@ spec:
       volumes:
         - name: containerdisk
           containerDisk:
-            image: quay.{{ bootstrap_tenant_cluster_domain }}/{{ bootstrap_tenant_quay_organization }}/{{ bootstrap_tenant_quay_repository }}:{{ bootstrap_tenant_quay_image_tag }}
+            image: {{ bootstrap_tenant_quay_hostname }}/{{ bootstrap_tenant_quay_organization }}/{{ bootstrap_tenant_quay_repository }}:{{ bootstrap_tenant_quay_image_tag }}
         - cloudInitNoCloud:
             userData: |-
               #cloud-config

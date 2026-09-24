@@ -9,3 +9,7 @@ bootstrap_tenant_quay_repository: centos-stream9
 bootstrap_tenant_quay_image_tag: latest
 
 bootstrap_tenant_vm_scheduling_memory: 999Gi
+
+bootstrap_tenant_quay_url: "{{ (lookup('agnosticd.core.agnosticd_user_data', '*') | from_yaml).quay_url }}"
+bootstrap_tenant_quay_hostname: "{{ (lookup('agnosticd.core.agnosticd_user_data', '*') | from_yaml).quay_hostname }}"
+bootstrap_tenant_quay_user: "{{ (lookup('agnosticd.core.agnosticd_user_data', '*') | from_yaml).quay_user }}"

@@ -9,21 +9,20 @@
 
 - name: Set Quay admin credentials and API URL
   ansible.builtin.set_fact:
-    _bootstrap_tenant_quay_url: "https://quay.{{ bootstrap_tenant_cluster_domain }}"
     _bootstrap_tenant_quay_admin_user: "{{ r_quay_admin_secret.resources[0].data.username | b64decode | trim }}"
     _bootstrap_tenant_quay_admin_password: "{{ r_quay_admin_secret.resources[0].data.password | b64decode | trim }}"
   no_log: true
 
 - name: Get initial CSRF token
   ansible.builtin.uri:
-    url: "{{ _bootstrap_tenant_quay_url }}/csrf_token"
+    url: "{{ bootstrap_tenant_quay_url }}/csrf_token"
     validate_certs: false
     status_code: 200
   register: r_quay_csrf_initial
 
 - name: Sign in to Quay as admin
   ansible.builtin.uri:
-    url: "{{ _bootstrap_tenant_quay_url }}/api/v1/signin"
+    url: "{{ bootstrap_tenant_quay_url }}/api/v1/signin"
     method: POST
     validate_certs: false
     headers:
@@ -39,7 +38,7 @@
 
 - name: Get authenticated CSRF token
   ansible.builtin.uri:
-    url: "{{ _bootstrap_tenant_quay_url }}/csrf_token"
+    url: "{{ bootstrap_tenant_quay_url }}/csrf_token"
     validate_certs: false
     headers:
       Cookie: "{{ r_quay_signin.cookies_string }}"
@@ -49,10 +48,10 @@
 - name: Grant Quay user read access to shared repository
   ansible.builtin.uri:
     url: >-
-      {{ _bootstrap_tenant_quay_url }}/api/v1/repository/{{
+      {{ bootstrap_tenant_quay_url }}/api/v1/repository/{{
       bootstrap_tenant_quay_organization }}/{{
       bootstrap_tenant_quay_repository }}/permissions/user/{{
-      bootstrap_tenant_username }}
+      bootstrap_tenant_quay_user }}
     method: PUT
     validate_certs: false
     headers:
@@ -62,3 +61,7 @@
     body:
       role: read
     status_code: 200
+  register: r_grant_quay_permission
+  until: r_grant_quay_permission.status == 200
+  retries: 5
+  delay: 5
