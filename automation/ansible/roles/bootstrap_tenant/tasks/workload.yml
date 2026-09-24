@@ -5,33 +5,6 @@
       username: "{{ bootstrap_tenant_username }}"
       _agnosticd_user_data: "{{ lookup('agnosticd.core.agnosticd_user_data', '*') }}"
 
-- name: Create tenant namespace
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
-
-- name: Grant tenant edit access
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: RoleBinding
-      metadata:
-        name: "{{ bootstrap_tenant_username }}-edit"
-        namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: edit
-      subjects:
-        - apiGroup: rbac.authorization.k8s.io
-          kind: User
-          name: "{{ bootstrap_tenant_username }}"
-
 - name: Grant Quay access
   ansible.builtin.include_tasks: grant_quay_access.yml
 

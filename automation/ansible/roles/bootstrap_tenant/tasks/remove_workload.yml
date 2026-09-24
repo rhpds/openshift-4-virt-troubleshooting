@@ -1,9 +1,1 @@
 ---
-- name: Delete tenant namespace
-  kubernetes.core.k8s:
-    state: absent
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
