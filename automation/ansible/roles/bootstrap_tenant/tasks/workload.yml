@@ -3,7 +3,6 @@
   ansible.builtin.debug:
     msg:
       username: "{{ bootstrap_tenant_username }}"
-      quay: "{{ quay_url }}"
       _agnosticd_user_data: "{{ lookup('agnosticd.core.agnosticd_user_data', '*') }}"
 
 - name: Create tenant namespace
