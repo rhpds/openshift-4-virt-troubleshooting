@@ -13,3 +13,15 @@ deployer:
 # lab run.
 cpuManager:
   enabled: true
+
+quay:
+  enabled: true
+  public: false
+  # must match bootstrap_tenant_quay_organization in automation/ansible.
+  organization: students
+  # must match bootstrap_tenant_quay_repository in automation/ansible.
+  repository: centos-stream9
+  # must match bootstrap_tenant_quay_image_tag in automation/ansible.
+  imageTag: latest
+  sourceImage: quay.io/containerdisks/centos-stream:9
+  syncImage: registry.redhat.io/rhel9/skopeo:latest

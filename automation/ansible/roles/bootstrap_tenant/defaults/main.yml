@@ -1,7 +1,11 @@
 ---
 bootstrap_tenant_username: user1
-bootstrap_tenant_cluster_domain: apps.cluster.example.com
-bootstrap_tenant_registry_image_path: vm-images/centos-stream9
-bootstrap_tenant_registry_image_tag: latest
+
+# must match quay.organization in automation/gitops/bootstrap-infra/values.yaml
+bootstrap_tenant_quay_organization: students
+# must match quay.repository in automation/gitops/bootstrap-infra/values.yaml
+bootstrap_tenant_quay_repository: centos-stream9
+# must match quay.imageTag in automation/gitops/bootstrap-infra/values.yaml
+bootstrap_tenant_quay_image_tag: latest
+
 bootstrap_tenant_vm_scheduling_memory: 999Gi
-bootstrap_tenant_state: present

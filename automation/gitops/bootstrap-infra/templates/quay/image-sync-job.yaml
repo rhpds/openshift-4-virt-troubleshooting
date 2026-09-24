@@ -1,0 +1,81 @@
+{{- if .Values.quay.enabled }}
+# One-shot mirror of the public source image into the cluster's Quay
+# instance, so every tenant's "vm-imagepull" VM pulls the same image from
+# the same org/repository. Creates the organization and repository via the
+# Quay API if they don't already exist (idempotent -- safe to re-run on
+# every sync), then pushes the image with skopeo. Per-tenant read access is
+# granted directly on this repository by the automation/ansible
+# bootstrap_tenant role -- this Job never creates per-tenant state.
+#
+# Auth: signs in as the Quay admin using the operator-managed
+# quay-admin-credentials Secret (requires
+# ocp4_workload_quay_operator_registry_save_admin_credentials: true on the
+# AgnosticV cluster item) via the same cookie/CSRF flow Quay's own web UI
+# uses -- org/repo creation aren't exposed through a plain bearer-token
+# endpoint here.
+#
+# ASSUMPTION -- flagged for review: assumes the skopeo image includes curl.
+# Verify live; swap the image if it doesn't.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: quay-image-sync
+  namespace: quay
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: quay-image-sync
+          image: {{ .Values.quay.syncImage }}
+          env:
+            - name: QUAY_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: quay-admin-credentials
+                  key: username
+            - name: QUAY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: quay-admin-credentials
+                  key: password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              QUAY_HOST="quay.{{ .Values.deployer.domain }}"
+              QUAY_URL="https://${QUAY_HOST}"
+              ORG="{{ .Values.quay.organization }}"
+              REPO="{{ .Values.quay.repository }}"
+              VISIBILITY="{{ if .Values.quay.public }}public{{ else }}private{{ end }}"
+              JAR=$(mktemp)
+
+              csrf=$(curl -sk -c "$JAR" "$QUAY_URL/csrf_token" | grep -o '"csrf_token": *"[^"]*"' | cut -d'"' -f4)
+              curl -sk -c "$JAR" -b "$JAR" -o /dev/null -X POST "$QUAY_URL/api/v1/signin" \
+                -H "Content-Type: application/json" -H "X-CSRF-Token: ${csrf}" \
+                -d "{\"username\":\"${QUAY_ADMIN_USERNAME}\",\"password\":\"${QUAY_ADMIN_PASSWORD}\"}"
+              csrf=$(curl -sk -b "$JAR" "$QUAY_URL/csrf_token" | grep -o '"csrf_token": *"[^"]*"' | cut -d'"' -f4)
+
+              echo "Ensuring organization ${ORG} exists"
+              curl -sk -b "$JAR" -o /dev/null -w 'org create: %{http_code}\n' -X POST "$QUAY_URL/api/v1/organization/" \
+                -H "Content-Type: application/json" -H "X-CSRF-Token: ${csrf}" \
+                -d "{\"name\":\"${ORG}\",\"email\":\"${ORG}@example.com\"}"
+
+              echo "Ensuring repository ${ORG}/${REPO} exists (visibility: ${VISIBILITY})"
+              curl -sk -b "$JAR" -o /dev/null -w 'repo create: %{http_code}\n' -X POST "$QUAY_URL/api/v1/repository" \
+                -H "Content-Type: application/json" -H "X-CSRF-Token: ${csrf}" \
+                -d "{\"repository\":\"${REPO}\",\"namespace\":\"${ORG}\",\"visibility\":\"${VISIBILITY}\",\"repo_kind\":\"image\",\"description\":\"\"}"
+
+              echo "Syncing image into ${QUAY_HOST}/${ORG}/${REPO}:{{ .Values.quay.imageTag }}"
+              skopeo copy --retry-times 3 --remove-signatures \
+                --dest-creds "${QUAY_ADMIN_USERNAME}:${QUAY_ADMIN_PASSWORD}" \
+                --dest-tls-verify=false \
+                docker://{{ .Values.quay.sourceImage }} \
+                docker://${QUAY_HOST}/${ORG}/${REPO}:{{ .Values.quay.imageTag }}
+{{- end }}

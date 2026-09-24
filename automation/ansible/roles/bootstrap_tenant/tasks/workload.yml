@@ -1,4 +1,15 @@
 ---
+- name: Print bootstrap_tenant variables
+  ansible.builtin.debug:
+    msg:
+      username: "{{ bootstrap_tenant_username }}"
+      _agnosticd_user_data: "{{ lookup('agnosticd.core.agnosticd_user_data', '*') }}"
+
+- name: Look up cluster apps domain from AgnosticD user data
+  ansible.builtin.set_fact:
+    bootstrap_tenant_cluster_domain: >-
+      {{ (lookup('agnosticd.core.agnosticd_user_data', '*') | from_yaml).openshift_cluster_ingress_domain }}
+
 - name: Create tenant namespace
   kubernetes.core.k8s:
     state: present
@@ -25,6 +36,9 @@
         - apiGroup: rbac.authorization.k8s.io
           kind: User
           name: "{{ bootstrap_tenant_username }}"
+
+- name: Grant Quay access
+  ansible.builtin.include_tasks: grant_quay_access.yml
 
 - name: "Deploy broken VM - Task 1: scheduling failure"
   kubernetes.core.k8s:
