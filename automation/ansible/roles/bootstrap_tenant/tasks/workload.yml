@@ -8,17 +8,17 @@
 - name: Grant Quay access
   ansible.builtin.include_tasks: grant_quay_access.yml
 
-- name: "Deploy broken VM - Task 1: scheduling failure"
+- name: "Deploy broken VM scheduling failure"
   kubernetes.core.k8s:
     state: present
     definition: "{{ lookup('template', 'vm-scheduling.yaml.j2') }}"
 
-- name: "Deploy broken VM - Task 2: image pull failure"
+- name: "Deploy broken VM image pull failure"
   kubernetes.core.k8s:
     state: present
     definition: "{{ lookup('template', 'vm-imagepull.yaml.j2') }}"
 
-- name: "Deploy broken VM - Task 3: missing cloud-init secret"
+- name: "Deploy broken VM missing cloud-init secret"
   kubernetes.core.k8s:
     state: present
     definition: "{{ lookup('template', 'vm-cloudinit.yaml.j2') }}"

@@ -1,1 +1,24 @@
 ---
+- name: "Remove broken scheduling failure"
+  kubernetes.core.k8s:
+    state: absent
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    name: vm-scheduling
+    namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
+
+- name: "Remove broken image pull failure"
+  kubernetes.core.k8s:
+    state: absent
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    name: vm-imagepull
+    namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
+
+- name: "Remove broken missing cloud-init secret"
+  kubernetes.core.k8s:
+    state: absent
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    name: vm-cloudinit
+    namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
