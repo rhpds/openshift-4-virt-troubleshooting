@@ -10,41 +10,38 @@
         annotations:
           openshift.io/description: "This project holds our core application workloads"
           openshift.io/display-name: "Production Workloads"
+
 - name: Create vm-private-net network attachment definition
-  redhat.openshift.k8s:
-    state: present
-    inline:
-      apiVersion: k8s.cni.cncf.io/v1
-      kind: NetworkAttachmentDefinition
-      metadata:
-        annotations:
-          k8s.v1.cni.cncf.io/resourceName: bridge.network.kubevirt.io/br0
-        name: vm-private-net
-        namespace: "{{ bootstrap_tenant_username }}-nw-troubleshoot"
-      spec:
-        config: |
-          {
-            "name":"vm-private-net",
-            "type":"bridge",
-            "cniVersion":"0.3.1",
-            "bridge":"br0-typo",
-            "macspoofchk":true,
-            "ipam":{},
-            "preserveDefaultVlan":false
-          }
+  redhat.openshift.k8s:
+    state: present
+    definition:
+      apiVersion: k8s.cni.cncf.io/v1
+      kind: NetworkAttachmentDefinition
+      metadata:
+        annotations:
+          k8s.v1.cni.cncf.io/resourceName: bridge.network.kubevirt.io/br0
+        name: vm-private-net
+        namespace: "{{ bootstrap_tenant_username }}-nw-troubleshoot"
+      spec:
+        config: |
+          {
+            "name":"vm-private-net",
+            "type":"bridge",
+            "cniVersion":"0.3.1",
+            "bridge":"br0-typo",
+            "macspoofchk":true,
+            "ipam":{},
+            "preserveDefaultVlan":false
+          }
 
-- name: "Deploy broken VM scheduling failure"
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'vm-network.yaml.j2') }}"
+- name: Deploy broken VM scheduling failure - dynamic network
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm-network.yaml.j2') }}"
 
-
-- name: "Deploy broken VM scheduling failure"
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'vm-static-network.yaml.j2') }}"
-
-
-
+- name: Deploy broken VM scheduling failure - static network
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm-static-network.yaml.j2') }}"
 
 
