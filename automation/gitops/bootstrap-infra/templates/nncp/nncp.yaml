@@ -1,0 +1,16 @@
+apiVersion: nmstate.io/v1
+kind: NodeNetworkConfigurationPolicy
+metadata:
+  name: br-flat-policy
+spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+  desiredState:
+    interfaces:
+      - name: br-flat
+        description: Healthy Linux bridge for lab
+        type: linux-bridge
+        state: up
+        ipv4:
+          enabled: false
+

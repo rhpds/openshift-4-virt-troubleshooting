@@ -1,0 +1,56 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-lab1
+  namespace: {{ bootstrap_tenant_username }}-nw-troubleshoot
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: vm-lab1
+    spec:
+      domain:
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: containerdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - name: default
+              masquerade: {}
+            - name: secondary-net
+              # FAULT 1: The admin mistyped/selected SR-IOV instead of Bridge.
+              # This will cause the Pod to get stuck in "Pending" due to missing hardware.
+              sriov: {}
+        resources:
+          requests:
+            memory: 1024Mi
+      networks:
+        - name: default
+          pod: {}
+        - name: secondary-net
+          multus:
+            networkName: healthy-flat-net # (Using the correct, healthy NAD)
+      volumes:
+        - name: containerdisk
+          containerDisk:
+            # Using the standard RHEL 9 Guest Image
+            image: registry.redhat.io/rhel9/rhel-guest-image
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              user: cloud-user
+              password: password123
+              chpasswd: { expire: False }
+            # FAULT 2: The static IP is injected with a /32 mask instead of /24
+            networkData: |
+              version: 2
+              ethernets:
+                eth1:
+                  addresses:
+                    - 10.10.10.50/32

@@ -1,7 +1,10 @@
 ---
-- name: Running workload tasks
-  when: ACTION | default('provision') == 'provision'
-  ansible.builtin.include_tasks: workload.yml
+- name: Running all provisioning tasks
+  when: ACTION | default('provision') == 'provision'
+  ansible.builtin.include_tasks: "{{ item }}"
+  loop:
+    - workload.yml
+    - network-workload.yml
 
 - name: Running workload removal tasks
   when: ACTION | default('provision') in ['remove', 'destroy']
