@@ -21,7 +21,7 @@
         annotations:
           k8s.v1.cni.cncf.io/resourceName: bridge.network.kubevirt.io/br0
         name: vm-private-net
-        namespace: "{{ bootstrap_tenant_username }}-nw-troubleshoot"
+        namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
       spec:
         config: |
           {
