@@ -2,7 +2,7 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm-network
-  namespace: "{{ bootstrap_tenant_username }}-nw-troubleshoot"
+  namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1
@@ -69,7 +69,7 @@ spec:
           pod: {}
         - name: secondary-net
           multus:
-            networkName: "{{ bootstrap_tenant_username }}-nw-troubleshoot/vm-private-net"
+            networkName: "{{ bootstrap_tenant_username }}-vm-troubleshoot/vm-private-net"
       terminationGracePeriodSeconds: 180
       volumes:
         - dataVolume:
