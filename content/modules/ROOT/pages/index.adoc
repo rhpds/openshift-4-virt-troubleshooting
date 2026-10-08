@@ -1,5 +1,63 @@
-= OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures
+# OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures
 
-This project was created with the RHDP Publishing House template.
+<!-- This file is the design document for your lab or demo. -->
+<!-- Sections marked with [brackets] are placeholders — replace with real content. -->
+<!-- The validation gate checks for all required sections before submission. -->
 
-Run `/rhdp-publishing-house` in Claude Code to begin.
+## Overview
+
+Deploying virtual machines on OpenShift is simply the Day 1 foundation; the true test
+of operational maturity begins on Day 2. Once workloads hit production, administrators
+face mission-critical challenges that define platform stability: stalling image imports
+(CDI), persistent storage bottlenecks, live-migration failures, network connectivity
+isolation, and guest agent synchronization gaps. This lab shifts the focus from simple
+deployment to resilient maintenance, equipping attendees with the diagnostic expertise
+needed to troubleshoot and resolve these complex Day 2 lifecycle issues.
+
+In this 120-minute hands-on lab, participants troubleshoot intentionally broken
+OpenShift Virtualization environments that mirror real production incidents. Rather than
+following predefined commands, attendees learn a structured diagnostic workflow using
+`oc`, `virtctl`, Kubernetes events, VirtualMachineInstance (VMI) objects, CDI resources,
+Multus networking, and virt-launcher logs. By the end of the session, attendees have a
+practical troubleshooting methodology they can apply in production to rapidly identify
+and resolve common OpenShift Virtualization operational issues.
+
+## Target Audience
+
+- **Role:** Platform engineers / OpenShift administrators / virtualization operators
+- **Experience level:** Intermediate
+- **What they already know:** Core Kubernetes/OpenShift concepts (pods, namespaces,
+  `oc` CLI), general familiarity with virtualization and VM lifecycle concepts
+- **What they don't know:** OpenShift Virtualization Day 2 troubleshooting internals —
+  VMI/virt-launcher lifecycle, CDI/DataVolume import mechanics, live-migration
+  prerequisites, Multus/NMState VM networking, and QEMU Guest Agent integration
+
+## Prerequisites
+
+- Familiarity with basic OpenShift/Kubernetes concepts (pods, namespaces, `oc` CLI)
+- Comfort reading logs and Kubernetes events
+- No prior OpenShift Virtualization troubleshooting experience required
+- Can the lab validate these automatically? No — trust-based, consistent with the
+  intermediate audience level
+
+## Learning Objectives
+
+1. Follow a structured troubleshooting workflow for OpenShift Virtualization using
+   `oc` and `virtctl`
+2. Diagnose VM startup and provisioning failures by inspecting VM/VMI lifecycle, Events,
+   and virt-launcher logs
+3. Troubleshoot CDI image imports and DataVolumes, including WaitForFirstConsumer
+   deadlocks and registry access failures
+4. Investigate live migration failures caused by storage, networking, CPU, and
+   host-device constraints
+5. Debug VM networking using Multus NetworkAttachmentDefinitions, NMState, and
+   NetworkPolicies
+6. Validate QEMU Guest Agent communication and restore Day 2 operational features
+
+<!-- Scaled to a 120-minute lab: 6 objectives across 5 labs, each lab is a self-contained diagnostic scenario. -->
+
+## Content Type
+
+Lab (hands-on)
+
+- [Module 1 - Vm Startup Troubleshooting](modules/module-01.adoc)
