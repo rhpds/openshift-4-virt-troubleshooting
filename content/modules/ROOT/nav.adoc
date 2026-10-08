@@ -1,1 +1,4 @@
 * xref:index.adoc[Lab Overview]
+* xref:lab-environment.adoc[Lab Environment]
+
+* xref:modules/module-01.adoc[Module 1 - Vm Startup Troubleshooting]
