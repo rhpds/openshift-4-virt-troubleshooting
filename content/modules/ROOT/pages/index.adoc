@@ -60,4 +60,4 @@ and resolve common OpenShift Virtualization operational issues.
 
 Lab (hands-on)
 
-- [Module 1 - Vm Startup Troubleshooting](modules/module-01.adoc)
+* xref:modules/module-01.adoc[Module 1 - Vm Startup Troubleshooting]
