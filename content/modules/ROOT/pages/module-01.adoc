@@ -13,7 +13,7 @@ This lab focuses on diagnosing and resolving Virtual Machine startup issues in O
 
 ==== Problem Scenario
 
-A Virtual Machine is configured with a container disk image in namespace {{ bootstrap_tenant_username }}-troubleshoot-01. When attempting to start the VM, the startup process fails.
+A Virtual Machine vm1 is configured with a container disk image in namespace {{ bootstrap_tenant_username }}-troubleshoot-01. When attempting to start the VM, the startup process fails.
 
 ==== Reference Documentation & Setup
 
@@ -40,7 +40,7 @@ oc get events
 
 ==== Problem Scenario
 
-A Virtual Machine fails to start as expected. Investigate the issue to determine the root cause and restore the VM to a running state.
+A Virtual Machine vm2 fails to start as expected in namespace {{ bootstrap_tenant_username }}-troubleshoot-01. Investigate the issue to determine the root cause and restore the VM to a running state.
 
 ==== Diagnostic Commands
 
