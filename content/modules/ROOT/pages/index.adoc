@@ -1,8 +1,6 @@
+= Welcome to {lab_name}!
 # OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures
 
-<!-- This file is the design document for your lab or demo. -->
-<!-- Sections marked with [brackets] are placeholders — replace with real content. -->
-<!-- The validation gate checks for all required sections before submission. -->
 
 ## Overview
 
@@ -58,6 +56,12 @@ and resolve common OpenShift Virtualization operational issues.
 
 ## Content Type
 
-Lab (hands-on)
+=== Credentials for the OpenShift Console
 
-* xref:module-01.adoc[Module 1 - Vm Startup Troubleshooting]
+Your OpenShift cluster console is available {openshift_console_url}[here^].
+
+Your login is available with:
+
+* *User:* {bootstrap_tenant_username}
+* *Password:* {password}
+

@@ -13,7 +13,7 @@ This lab focuses on diagnosing and resolving Virtual Machine startup issues in O
 
 ==== Problem Scenario
 
-A Virtual Machine is configured with a container disk image. When attempting to start the VM, the startup process fails.
+A Virtual Machine is configured with a container disk image in namespace {{ bootstrap_tenant_username }}-troubleshoot-01. When attempting to start the VM, the startup process fails.
 
 ==== Reference Documentation & Setup
 
