@@ -1,5 +1,4 @@
 = Welcome to {lab_name}!
-# OpenShift Virtualization Troubleshooting Workshop: Diagnosing Real Production Failures
 
 
 ## Overview
@@ -52,9 +51,7 @@ and resolve common OpenShift Virtualization operational issues.
    NetworkPolicies
 6. Validate QEMU Guest Agent communication and restore Day 2 operational features
 
-<!-- Scaled to a 120-minute lab: 6 objectives across 5 labs, each lab is a self-contained diagnostic scenario. -->
 
-## Content Type
 
 === Credentials for the OpenShift Console
 
