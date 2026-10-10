@@ -2,7 +2,7 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm-imagepull
-  namespace: {{ bootstrap_tenant_username }}-vm-troubleshoot
+  namespace: {{ bootstrap_tenant_username }}-troubleshoot-01
 spec:
   runStrategy: Always
   template:
