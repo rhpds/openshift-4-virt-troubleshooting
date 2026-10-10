@@ -2,7 +2,7 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm-cloudinit
-  namespace: {{ bootstrap_tenant_username }}-vm-troubleshoot
+  namespace: {{ bootstrap_tenant_username }}-troubleshoot-01
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1
@@ -67,8 +67,7 @@ spec:
         - dataVolume:
             name: vm-cloudinit-disk
           name: rootdisk
-        # user-credentials Secret is deliberately never created here — the student
-        # creates it as the fix.
+        # user-credentials Secret
         - cloudInitNoCloud:
             secretRef:
               name: user-credentials
