@@ -1,18 +1,69 @@
 ---
-- name: Create an OpenShift Project
-  redhat.openshift.k8s:
+- name: Create Role for NAD management
+  kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: project.openshift.io/v1
-      kind: Project
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
       metadata:
-        name: "{{ bootstrap_tenant_username }}-nw-troubleshoot"
-        annotations:
-          openshift.io/description: "This project holds our core application workloads"
-          openshift.io/display-name: "Production Workloads"
+        name: nad-editor
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-02"
+      rules:
+        - apiGroups:
+            - "k8s.cni.cncf.io"
+          resources:
+            - network-attachment-definitions
+          verbs:
+            - get
+            - list
+            - watch
+            - create
+            - update
+            - patch
+            - delete
 
-- name: Create vm-private-net network attachment definition
-  redhat.openshift.k8s:
+- name: Create RoleBinding for NAD management
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: nad-editor-binding
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-02"
+      subjects:
+        - kind: User
+          name: "{{ bootstrap_tenant_username }}"
+      roleRef:
+        kind: Role
+        name: nad-editor
+        apiGroup: rbac.authorization.k8s.io
+
+- name: Create healthy-flat-net network attachment definition
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: k8s.cni.cncf.io/v1
+      kind: NetworkAttachmentDefinition
+      metadata:
+        annotations:
+          k8s.v1.cni.cncf.io/resourceName: bridge.network.kubevirt.io/br0
+        name: healthy-flat-net
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-02"
+      spec:
+        config: |
+          {
+            "name":"healthy-flat-net",
+            "type":"bridge",
+            "cniVersion":"0.3.1",
+            "bridge":"br0",
+            "macspoofchk":true,
+            "ipam":{},
+            "preserveDefaultVlan":false
+          }
+
+- name: Create vm-private-net network attachment definition (With Typo Fault)
+  kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: k8s.cni.cncf.io/v1
@@ -21,7 +72,7 @@
         annotations:
           k8s.v1.cni.cncf.io/resourceName: bridge.network.kubevirt.io/br0
         name: vm-private-net
-        namespace: "{{ bootstrap_tenant_username }}-vm-troubleshoot"
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-02"
       spec:
         config: |
           {
