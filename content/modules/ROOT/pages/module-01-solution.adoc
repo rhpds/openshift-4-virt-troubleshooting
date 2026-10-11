@@ -27,6 +27,8 @@ oc create secret docker-registry registry-secret \
 oc secrets link default registry-secret --for=pull -n {{ bootstrap_tenant_username }}-troubleshoot-01.
 ----
 
+. Restart the VM and check the status
+
 === Solution for Task 2: Troubleshooting Failure Scenario B
 
 ==== Guided Investigation & Root Cause Analysis
@@ -38,7 +40,7 @@ oc secrets link default registry-secret --for=pull -n {{ bootstrap_tenant_userna
 
 ==== Step-by-Step Resolution
 
-Create the required configuration or secret in the namespace to satisfy the VM startup requirements.
+. Create the required configuration or secret in the namespace {{ bootstrap_tenant_username }}-troubleshoot-01 to satisfy the VM startup requirements.
 +
 [source,sh]
 ----
@@ -58,4 +60,6 @@ stringData:
     chpasswd: { expire: False }
 EOF
 ----
+
+. Restart the VM and check the status
 
