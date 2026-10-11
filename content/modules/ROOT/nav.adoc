@@ -3,3 +3,8 @@
 * xref:module-01.adoc[Module 1 Troubleshooting]
 * xref:module-02.adoc[Module 2 Troubleshooting]
 
+
+
+* xref:SolutionGuide.adoc[Guided Solution]
+** xref:module-01-solution.adoc[Module 1 Solution]
+

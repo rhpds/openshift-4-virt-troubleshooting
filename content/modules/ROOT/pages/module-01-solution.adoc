@@ -1,0 +1,61 @@
+=== Solution for Task 1: Troubleshooting Failure Scenario A
+
+==== Guided Investigation & Root Cause Analysis
+
+. Inspect the Virtual Machine Instance using `oc get vmi`. Notice that the VMI does not reach the Running phase.
+. Identify the active virt-launcher pod and run `oc describe pod <virt-launcher-pod>`.
+. Scroll down to the *Events* section of the pod description. You will observe `ErrImagePull` and `ImagePullBackOff` messages.
+. *Root Cause Analysis (RCA):* The cluster is unable to pull the container disk image because authentication credentials for the private registry are missing in the namespace {{ bootstrap_tenant_username }}-troubleshoot-01
+
+==== Step-by-Step Resolution
+
+. Create a secret containing the authentication credentials for the private registry in the {{ bootstrap_tenant_username }}-troubleshoot-01 namespace:
++
+[source,sh]
+----
+oc create secret docker-registry registry-secret \
+  --docker-server=$private-registry \
+  --docker-username=username \
+  --docker-password=password \
+  -n {{ bootstrap_tenant_username }}-troubleshoot-01
+----
+
+. Link the newly created secret to the default service account in the namespace to grant image pull permissions:
++
+[source,sh]
+----
+oc secrets link default registry-secret --for=pull -n {{ bootstrap_tenant_username }}-troubleshoot-01.
+----
+
+=== Solution for Task 2: Troubleshooting Failure Scenario B
+
+==== Guided Investigation & Root Cause Analysis
+
+. Run `oc get vm` and `oc get vmi` to confirm that the VM remains stuck during startup.
+. Run `oc get pods` and inspect the virt-launcher pod status.
+. Inspect the volume specification of the VM template or deployment manifest to identify missing configuration references.
+. *Root Cause Analysis (RCA):* The VM cannot complete startup initialization due to missing required configuration or secrets within the namespace.
+
+==== Step-by-Step Resolution
+
+Create the required configuration or secret in the namespace to satisfy the VM startup requirements.
++
+[source,sh]
+----
+
+cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-credentials
+  namespace: {{ bootstrap_tenant_username }}-troubleshoot-01
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: admin
+    password: PasswordSecure99
+    chpasswd: { expire: False }
+EOF
+----
+
