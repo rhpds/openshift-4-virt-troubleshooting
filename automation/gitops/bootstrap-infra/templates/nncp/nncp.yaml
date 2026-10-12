@@ -1,0 +1,15 @@
+apiVersion: nmstate.io/v1
+kind: NodeNetworkConfigurationPolicy
+metadata:
+  name: br0-policy
+spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+  desiredState:
+    interfaces:
+      - name: br0
+        description: Isolated Linux bridge for OpenShift Virtualization lab
+        type: linux-bridge
+        state: up
+        ipv4:
+          enabled: false
