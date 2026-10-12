@@ -79,7 +79,7 @@
             "name":"vm-private-net",
             "type":"bridge",
             "cniVersion":"0.3.1",
-            "bridge":"br0-typo",
+            "bridge":"enp2s0",
             "macspoofchk":true,
             "ipam":{},
             "preserveDefaultVlan":false
