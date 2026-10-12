@@ -1,12 +1,12 @@
-= Lab 2: VM Network  Troubleshooting
+= Lab 2: VM Network Troubleshooting
 
 == Overview & Objectives
 
 This lab focuses on diagnosing and resolving Virtual Machine networking and scheduling issues in OpenShift Virtualization.
 
-* Understand how OpenShift Virtualization interacts with Multus and NetworkAttachmentDefinitions (NAD).
-* Troubleshoot Pod scheduling failures related to interface hardware binding.
-* Inspect Guest OS network configurations injected via Cloud-Init to resolve Layer 3 routing issues.
+- Understand how OpenShift Virtualization interacts with Multus and NetworkAttachmentDefinitions (NAD).
+- Troubleshoot Pod scheduling failures related to interface hardware binding.
+- Inspect Guest OS network configurations injected via Cloud-Init to resolve Layer 3 routing issues.
 
 == Tasks
 
@@ -14,51 +14,50 @@ This lab focuses on diagnosing and resolving Virtual Machine networking and sche
 
 ==== Problem Scenario
 
-A Virtual Machine `vm3` is deployed in namespace `{{ bootstrap_tenant_username }}-troubleshoot-02` but is stuck in a `Starting` state. The VM refuses to boot because the underlying virt-launcher Pod is failing to connect to the secondary network due to a physical NIC collision configuration error in the environment.
+A Virtual Machine vm-lab1 is deployed in namespace {{ bootstrap_tenant_username }}-troubleshoot-02 but is stuck in a Starting state. The VM refuses to boot because the underlying virt-launcher Pod is failing to connect to the secondary network due to a physical NIC collision configuration error in the environment.
 
 ==== Reference Documentation & Setup
 
-* Consult the documentation on link:[https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-connecting-vm-to-linux-bridge](https://www.google.com/search?q=https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking%23virt-connecting-vm-to-linux-bridge)[Connecting a virtual machine to a Linux bridge network].
-* The VM relies on a custom NetworkAttachmentDefinition named for secondary network connectivity.
+- Consult the documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-connecting-vm-to-linux-bridge[Connecting a virtual machine to a Linux bridge network].
+- The VM relies on a custom NetworkAttachmentDefinition named vm-private-net for secondary network connectivity.
 
 ==== Diagnostic Commands
 
 Run the following commands in sequence to inspect the Pod events and investigate the NetworkAttachmentDefinition configuration:
 
-## [source,sh]
-
-## oc get vm -n {{ bootstrap_tenant_username }}-troubleshoot-02
+----
+oc get vm -n {{ bootstrap_tenant_username }}-troubleshoot-02
 oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
-oc describe pod  -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc describe pod <virt-launcher-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
 oc get networkattachmentdefinition -n {{ bootstrap_tenant_username }}-troubleshoot-02
 oc describe networkattachmentdefinition vm-private-net -n {{ bootstrap_tenant_username }}-troubleshoot-02
+----
 
-=== Task 2: Troubleshooting Scheduling and Cloud-Init (Double Fault)
+=== Task 2: Troubleshooting Scheduling VM with Network Interface and Layer 3 Route.
 
 ==== Problem Scenario
 
-A Virtual Machine `vm4` in namespace `{{ bootstrap_tenant_username }}-troubleshoot-02` will not schedule onto a worker node and remains in a `Pending` state. Once the scheduling issue is successfully resolved and the VM boots, the network team reports they cannot ping its static IP inside the Guest OS.
+A Virtual Machine vm4 in namespace {{ bootstrap_tenant_username }}-troubleshoot-02 will not schedule onto a worker node and remains in a Pending state. Once the scheduling issue is successfully resolved and the VM boots, the network team reports they cannot ping its static IP due to a mathematically isolated subnet mask inside the Guest OS. 
 
 ==== Reference Documentation & Setup
 
-* Consult the documentation on link:[https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-configuring-sriov-net-for-vms](https://www.google.com/search?q=https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking%23virt-configuring-sriov-net-for-vms)[Configuring SR-IOV networks for virtual machines] and Cloud-Init network configuration.
+- Consult the documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-configuring-sriov-net-for-vms[Configuring SR-IOV networks for virtual machines] and Cloud-Init network configuration.
 
 ==== Diagnostic Commands
 
 Execute the following commands to check the scheduling errors, inspect the VM YAML definition for hardware bindings, and verify the Guest OS IP configuration:
 
-## [source,sh]
-
-## oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
-oc describe pod  -n {{ bootstrap_tenant_username }}-troubleshoot-02
+----
+oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc describe pod <virt-launcher-vm4-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
 oc get vm vm4 -o yaml -n {{ bootstrap_tenant_username }}-troubleshoot-02
+----
 
-Once the scheduling issue is fixed via the YAML and the VM transitions to a Running state, use the OpenShift Web Console VNC or the `virtctl` CLI to check the Guest OS Layer 3 configuration:
+Once the scheduling issue is fixed via the YAML and the VM transitions to a Running state, use the OpenShift Web Console VNC or the virtctl CLI to check the Guest OS Layer 3 configuration:
 
-## [source,sh]
-
+----
 virtctl console vm4 -n {{ bootstrap_tenant_username }}-troubleshoot-02
 
-# Inside the Guest OS (Username: cloud-user / Password: password123):
-
-## ip a show eth1
+# Inside the Guest OS (Username: cloud-user / Password: " "):
+ip a show eth1
+----
