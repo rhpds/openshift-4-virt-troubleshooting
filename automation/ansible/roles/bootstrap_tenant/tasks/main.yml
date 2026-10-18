@@ -5,6 +5,7 @@
   loop:
     - workload.yml
     - network-workload.yml
+    - agent.yml
 
 - name: Running workload removal tasks
   when: ACTION | default('provision') in ['remove', 'destroy']
