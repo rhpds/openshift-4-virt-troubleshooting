@@ -1,0 +1,48 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm4
+  namespace: {{ bootstrap_tenant_username }}-troubleshoot-03
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: vm4
+    spec:
+      readinessProbe:
+        guestAgentPing: {}
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      domain:
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: containerdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - name: default
+              masquerade: {}
+        resources:
+          requests:
+            memory: 1024Mi
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: containerdisk
+          containerDisk:
+            image: registry.redhat.io/rhel9/rhel-guest-image
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              user: cloud-user
+              password: password123
+              chpasswd: { expire: False }
+              runcmd:
+                - systemctl mask qemu-guest-agent
+                - systemctl stop qemu-guest-agent
