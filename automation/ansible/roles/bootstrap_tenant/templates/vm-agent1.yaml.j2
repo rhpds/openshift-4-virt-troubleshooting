@@ -1,14 +1,14 @@
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
-  name: vm4
+  name: vm5
   namespace: {{ bootstrap_tenant_username }}-troubleshoot-03
 spec:
   running: true
   template:
     metadata:
       labels:
-        kubevirt.io/vm: vm4
+        kubevirt.io/vm: vm5
     spec:
       readinessProbe:
         guestAgentPing: {}
@@ -43,6 +43,3 @@ spec:
               user: cloud-user
               password: password123
               chpasswd: { expire: False }
-              runcmd:
-                - systemctl mask qemu-guest-agent
-                - systemctl stop qemu-guest-agent
