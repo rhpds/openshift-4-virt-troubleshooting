@@ -43,3 +43,7 @@ spec:
               user: cloud-user
               password: password123
               chpasswd: { expire: False }
+              runcmd:
+                - [ systemctl, stop, qemu-guest-agent ]
+                - [ systemctl, disable, qemu-guest-agent ]
+
