@@ -4,8 +4,7 @@
     state: present
     definition: "{{ lookup('template', 'vm-agent1.yaml.j2') }}"
 
-- name: "Deploy broken VM with agent failure 2
+- name: "Deploy broken VM with agent failure 2"
   kubernetes.core.k8s:
     state: present
     definition: "{{ lookup('template', 'vm-agent2.yaml.j2') }}"
-
