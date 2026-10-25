@@ -1,59 +1,80 @@
 = Lab 1: VM Startup Troubleshooting
 
+== Environment Access & Credentials
+
+=== Credentials for the OpenShift Console
+Your OpenShift cluster console is available {openshift_console_url}[here^].
+
+Your login is available with:
+
+* *User:* {user}
+* *Password:* {password}
+
+To access the cluster via the CLI, use the following login command:
+[source,sh]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
+=== Credentials for the Quay Registry
+Your Quay registry is available {quay_url}[here^].
+
+Your Quay login is available with:
+
+* *User:* {quay_user}
+* *Password:* {quay_password}
+
 == Overview & Objectives
 
-This lab focuses on diagnosing and resolving Virtual Machine startup issues in OpenShift Virtualization.
+This lab focuses on diagnosing and resolving Virtual Machine startup issues in OpenShift Virtualization. By the end of this module, you will:
 
 * Understand the OpenShift Virtualization VM startup workflow and object lifecycle.
 * Inspect key Kubernetes/OpenShift objects including VirtualMachine (VM), VirtualMachineInstance (VMI), virt-launcher pods, PersistentVolumeClaims (PVC), and DataVolumes (DV).
+
+== Suggested Troubleshooting Workflow
+
+When a Virtual Machine fails to start, use the following commands in sequence to isolate the root cause:
+
+[source,sh]
+----
+# Check high-level VM and VMI states
+oc get vm -n {user}-troubleshoot-01
+oc get vmi -n {user}-troubleshoot-01
+
+# Inspect the VMI definition and system events
+oc describe vmi <vm-name> -n {user}-troubleshoot-01
+
+# Locate the underlying virt-launcher pod
+oc get pods -n {user}-troubleshoot-01 -l kubevirt.io/created-by=<vmi-uid>
+oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-01
+
+# Check storage components and cluster events
+oc get pvc,dv -n {user}-troubleshoot-01
+oc get events -n {user}-troubleshoot-01 --sort-by='.metadata.creationTimestamp'
+----
 
 == Tasks
 
 === Task 1: Troubleshooting Failure Scenario A
 
 ==== Problem Scenario
+A Virtual Machine named `vm1` is configured to boot from a container disk image within the namespace `{user}-troubleshoot-01`. 
 
-A Virtual Machine vm1 is configured with a container disk image in namespace {{ bootstrap_tenant_username }}-troubleshoot-01. When attempting to start the VM, the startup process fails.
+When attempting to start the VM, the startup process fails and hangs indefinitely. The OpenShift Web Console reports that the system cannot spin up the workload instance.
 
 ==== Reference Documentation & Setup
+* Consult the Red Hat documentation on link:https://redhat.com[Creating VMs from Container Disks].
 
-* Consult the documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.22/html/virtualization/creating-virtual-machines#virt-creating-vm-import-cli_virt-creating-vms-from-container-disks[Creating VMs from Container Disks].
-* The VM is configured to use container disks.
-
-==== Diagnostic Commands
-
-Run the following commands in sequence to inspect the VM startup workflow:
-
-[source,sh]
-----
-oc get vm
-oc get vmi
-oc describe vmi <vm-name>
-oc get pods -l kubevirt.io/created-by=<vmi-uid>
-oc describe pod <virt-launcher-pod>
-oc get pvc
-oc get dv
-oc get events
-----
+==== Goal
+Investigate the cluster components, determine why the image deployment is failing, implement a fix, and successfully transition `vm1` to a `Running` state.
 
 === Task 2: Troubleshooting Failure Scenario B
 
 ==== Problem Scenario
+A Virtual Machine named `vm2` fails to start as expected in the namespace `{user}-troubleshoot-01`. 
 
-A Virtual Machine vm2 fails to start as expected in namespace {{ bootstrap_tenant_username }}-troubleshoot-01. Investigate the issue to determine the root cause and restore the VM to a running state.
+The VM definition appears valid, but it fails during the early orchestration phase before rendering an operating system interface.
 
-==== Diagnostic Commands
+==== Goal
+Investigate the object specifications, pinpoint the missing infrastructure dependency causing the initialization failure, fix it, and restore the VM to a fully operational state.
 
-Execute the following commands to check the state of the relevant objects:
-
-[source,sh]
-----
-oc get vm
-oc get vmi
-oc describe vmi <vm-name>
-oc get pods -l kubevirt.io/created-by=<vmi-uid>
-oc describe pod <virt-launcher-pod>
-oc get pvc
-oc get dv
-oc get events
-----
