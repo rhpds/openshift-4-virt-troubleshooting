@@ -65,7 +65,7 @@ _Observation:_ Look at the *Events* log at the bottom of the output. You will fi
 oc create secret docker-registry registry-secret --docker-server={quay_url} --docker-username={quay_user} --docker-password={quay_password} -n {user}-troubleshoot-01
 ----
 
-. Link the pull secret to the default ServiceAccount so the pod engine can explicitly leverage it:
+. Link the pull secret to the default ServiceAccount so the pod engine can implicitly leverage it:
 +
 [source,sh]
 ----
@@ -111,7 +111,7 @@ oc get vm vm2 -n {user}-troubleshoot-01
 oc get vmi vm2 -n {user}-troubleshoot-01
 ----
 
-. Inspect the cluster logs filtered chronologically:
+. Inspect the cluster events filtered chronologically:
 +
 [source,sh]
 ----
