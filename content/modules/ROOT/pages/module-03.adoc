@@ -1,34 +1,94 @@
-= Lab 3: Guest Agent Troubleshooting
+= Lab 3: Guest Integration Troubleshooting
+
+== Environment Access & Credentials
+
+=== Credentials for the OpenShift Console
+Your OpenShift cluster console is available {openshift_console_url}[here^].
+
+Your login is available with:
+
+* *User:* {user}
+* *Password:* {password}
+
+To access the cluster via the CLI, use the following login command:
+
+[source,sh,subs="attributes+"]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
+=== Credentials for the Quay Registry
+Your Quay registry is available {quay_url}[here^].
+
+Your Quay login is available with:
+
+* *User:* {quay_user}
+* *Password:* {quay_password}
 
 == Overview & Objectives
 
-- This lab focuses on diagnosing Virtual Machine readiness and IP visibility issues caused by QEMU Guest Agent failures in OpenShift Virtualization.
-- Understand how OpenShift Virtualization relies on the Guest Agent for cluster-level routing visibility (IP addresses) and Load Balancer health checks.
-- Troubleshoot Virtual Machine Readiness Probes (`guestAgentPing`) failing due to internal Guest OS service misconfigurations.
+This lab focuses on diagnosing and resolving orchestration lifecycle and configuration issues in OpenShift Virtualization. By the end of this module, you will:
+
+* Understand how OpenShift Virtualization tracks workload status conditions to validate cluster routing paths.
+* Troubleshoot complex virtualization readiness blocks to ensure the system is explicitly permitted to receive application traffic.
+
+[NOTE]
+====
+This lab is designed to give you hands-on experience with real-world guest integration scenarios. We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issues on your own first—that is where the best learning happens! 
+
+If you get stuck or want to verify your findings, the companion *Guided Solution* is always available to help guide you through the next steps.
+====
 
 == Tasks
 
-=== Task 1: Troubleshooting Readiness Probes and IP Visibility (The "Not Ready" VM)
+=== Task 1: Troubleshooting Workload Accessibility
 
 ==== Problem Scenario
+A Virtual Machine named `vm5` is deployed in the namespace `{user}-troubleshoot-03`. Operations reports that while the virtual machine instance itself powers on and successfully reaches a running state, the environment framework completely blocks inbound application traffic from reaching the backend system services.
 
-- A Virtual Machine `vm4` is deployed in namespace `{{ bootstrap_tenant_username }}-troubleshoot-03`. The VM is in a `Running` state, but OpenShift refuses to route traffic to it because its `READY` status is `False` (0/1). 
-- Additionally, the control plane is completely blind to the VM's internal IP addresses and Guest OS information.
-
-==== Reference Documentation & Setup
-
-- Consult the documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-management#virt-installing-qemu-guest-agent[Installing and configuring the QEMU guest agent].
-- The VM has a `readinessProbe` explicitly configured to ping the Guest Agent, but a simulated security hardening script has masked the service inside the Guest OS upon boot.
-
-==== Diagnostic Commands
-
-Run the following commands to inspect the VirtualMachineInstance (VMI) status and observe the missing IP and Readiness state:
-
+Run the following command to check the high-level infrastructure status of `vm5`:
+[source,sh,subs="attributes+"]
 ----
-oc get vmi vm4 -n {{ bootstrap_tenant_username }}-troubleshoot-03
-oc describe vmi vm4 -n {{ bootstrap_tenant_username }}-troubleshoot-03
+oc get vmi vm5 -n {user}-troubleshoot-03
 ----
 
-*Diagnostic Checkpoints:*
-- **CLI:** Look under the `READY` column; it will show `False`, and the `IP ADDRESS` column will be completely blank.
-- **GUI:** Navigate to **Virtualization -> VirtualMachines** in the OpenShift Web Console. `vm4` will show a warning that the VM is not ready. Click on the VM and check the **Overview** tab: The `IP Addresses` and `Guest OS` cards will report as "Not available".
+==== Reference Documentation
+* link:https://redhat.com[Installing and configuring guest communication agents]
+
+==== Goal
+Investigate the virtual machine failure, perform the necessary troubleshooting steps, and bring the VM up to a completely healthy status where it can receive network traffic.
+
+== Suggested Troubleshooting Reference Workflow
+
+Use the following commands in sequence to analyze the operational state of the virtual machine and isolate the root cause of the connection failure:
+
+Check high-level tracking VMI properties:
+[source,sh,subs="attributes+"]
+----
+oc get vmi vm5 -n {user}-troubleshoot-03
+----
+
+Check execution pod deployment logs:
+[source,sh,subs="attributes+"]
+----
+oc get pods -n {user}-troubleshoot-03
+----
+
+Describe the launcher pod configuration (replace `<pod-name>` with the active virt-launcher pod ID):
+[source,sh,subs="attributes+"]
+----
+oc describe pod <pod-name> -n {user}-troubleshoot-03
+----
+
+Describe the live VMI object manifest data to inspect status conditions and probe logs:
+[source,sh,subs="attributes+"]
+----
+oc describe vmi vm5 -n {user}-troubleshoot-03
+----
+
+Connect to the interactive serial console to explore the inner guest kernel runtime environment:
+[source,sh,subs="attributes+"]
+----
+virtctl console vm5 -n {user}-troubleshoot-03
+----
+

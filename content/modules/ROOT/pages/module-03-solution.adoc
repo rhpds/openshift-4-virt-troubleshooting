@@ -1,0 +1,137 @@
+= Lab 3: Guest Integration Troubleshooting - Solutions
+
+== Environment Access & Credentials
+
+=== Credentials for the OpenShift Console
+Your OpenShift cluster console is available {openshift_console_url}[here^].
+
+Your login is available with:
+
+* *User:* {user}
+* *Password:* {password}
+
+To access the cluster via the CLI, use the following login command:
+
+[source,sh,subs="attributes+"]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
+=== Credentials for the Quay Registry
+Your Quay registry is available {quay_url}[here^].
+
+Your Quay login is available with:
+
+* *User:* {quay_user}
+* *Password:* {quay_password}
+
+== Solution for Task 1: Troubleshooting Workload Accessibility
+
+==== Guided Investigation & Root Cause Analysis
+
+. Verify the status of the management resource architecture:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm -n {user}-troubleshoot-03
+----
++
+_Observation:_ The high-level VirtualMachine configuration reflects a status indicating it is turned on, meaning the management layer has successfully processed the power state instruction.
+
+. Check the operational metrics for the running Virtual Machine Instance tracker:
++
+[source,sh,subs="attributes+"]
+----
+oc get vmi vm5 -n {user}-troubleshoot-03
+----
++
+_Observation:_ **Observe that the READY column outputs `False`**.
+
+. Query the active execution pods deployed inside the lab namespace workspace:
++
+[source,sh,subs="attributes+"]
+----
+oc get pods -n {user}-troubleshoot-03
+----
++
+_Observation:_ Look closely at the `READY` column status metrics for the tracking `virt-launcher` container architecture. **Observe that only `2/3` containers are running successfully**, indicating an intermediate operational failure or probe block.
+
+. Describe the running `virt-launcher` pod layout to inspect infrastructure events (replace `<virt-launcher-pod-name>` with the exact pod ID string returned in the previous step):
++
+[source,sh,subs="attributes+"]
+----
+oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-03
+----
++
+_Observation:_ Scroll down through the tracking output data fields down to the *Events* and container status parameters. **Locate the explicit warning details indicating a Readiness probe failure issue**, which prevents the third tracking gate container framework from shifting into a completely operational state.
+
+. Extract the full declaration manifest structure layout for `vm5` to examine its configured validation parameters:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm vm5 -o yaml -n {user}-troubleshoot-03
+----
++
+_Observation:_ Scan the configuration arrays down to the `spec.template.spec` block. **Locate the `readinessProbe` object definition and observe that it is configured to check the guest agent framework explicitly via `guestAgentPing` parameters.** This means the cluster traffic block is occurring because the internal operating system layer is not acknowledging this specific hypervisor query beacon.
+
+. Establish an interactive serial terminal link directly into the internal guest operating system context wrapper:
++
+[source,sh,subs="attributes+"]
+----
+virtctl console vm5 -n {user}-troubleshoot-03
+----
++
+_Note: Log into the guest operating system interface using the standard lab credential pair: Username: `cloud-user`, Password: `password123`._
+
+. Check the current runtime configuration state of the communication subsystem engine within the guest shell context:
++
+[source,sh]
+----
+systemctl status qemu-guest-agent
+----
++
+_Observation:_ **Observe that the daemon reflects a status condition of `inactive (dead)` and its unit layout configuration properties are flagged as `masked`**, confirming that internal operating system barriers are locking out hypervisor integration metrics.
+
+. *Root Cause Analysis (RCA):* The `vm5` architecture configures a cluster-level validation gate that depends on internal `guestAgentPing` signals. The network layout blocks incoming workload communication because the internal `qemu-guest-agent` daemon is completely masked and stopped inside the Guest OS image, making the virtual machine permanently fail its readiness verification check.
+
+==== Step-by-Step Resolution
+
+. Unmask the service configuration block within the guest shell context to restore execution permissions:
++
+[source,sh]
+----
+sudo systemctl unmask qemu-guest-agent
+----
+
+. Start the service engine manually:
++
+[source,sh]
+----
+sudo systemctl start qemu-guest-agent
+----
+
+. Enable the service configuration so it launches automatically during future system boots:
++
+[source,sh]
+----
+sudo systemctl enable qemu-guest-agent
+----
+
+. Verify inside the guest shell that the daemon status shows `active (running)`:
++
+[source,sh]
+----
+systemctl status qemu-guest-agent
+----
+
+. Exit out of the interactive serial terminal session wrapper by using the shortcut pattern: `Ctrl` + `]`.
+
+. Query the VMI state from the cluster CLI to verify that the reconciliation loops have completed:
++
+[source,sh,subs="attributes+"]
+----
+oc get vmi vm5 -n {user}-troubleshoot-03
+----
++
+_Observation:_ The `READY` status field will now update to `True`, and the corresponding internal network interfaces and `IP ADDRESS` values will instantly display on both the CLI output and the OpenShift Web Console cards.
+
