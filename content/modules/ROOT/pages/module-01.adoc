@@ -11,6 +11,7 @@ Your login is available with:
 * *Password:* {password}
 
 To access the cluster via the CLI, use the following login command:
+
 [source,sh]
 ----
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
@@ -35,21 +36,45 @@ This lab focuses on diagnosing and resolving Virtual Machine startup issues in O
 
 When a Virtual Machine fails to start, use the following commands in sequence to isolate the root cause:
 
+Check high-level VM states:
 [source,sh]
 ----
-# Check high-level VM and VMI states
 oc get vm -n {user}-troubleshoot-01
+----
+
+Check high-level VMI states:
+[source,sh]
+----
 oc get vmi -n {user}-troubleshoot-01
+----
 
-# Inspect the VMI definition and system events
+Inspect the VMI definition and system events:
+[source,sh]
+----
 oc describe vmi <vm-name> -n {user}-troubleshoot-01
+----
 
-# Locate the underlying virt-launcher pod
+Locate the underlying virt-launcher pod:
+[source,sh]
+----
 oc get pods -n {user}-troubleshoot-01 -l kubevirt.io/created-by=<vmi-uid>
-oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-01
+----
 
-# Check storage components and cluster events
+Describe the virt-launcher pod configuration:
+[source,sh]
+----
+oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-01
+----
+
+Check storage components:
+[source,sh]
+----
 oc get pvc,dv -n {user}-troubleshoot-01
+----
+
+Query cluster events sorted chronologically:
+[source,sh]
+----
 oc get events -n {user}-troubleshoot-01 --sort-by='.metadata.creationTimestamp'
 ----
 

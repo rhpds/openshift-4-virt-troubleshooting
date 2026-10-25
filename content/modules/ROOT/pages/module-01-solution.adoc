@@ -11,6 +11,7 @@ Your login is available with:
 * *Password:* {password}
 
 To access the cluster via the CLI, use the following login command:
+
 [source,sh]
 ----
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
@@ -34,84 +35,103 @@ Your Quay login is available with:
 ----
 oc get vmi vm1 -n {user}-troubleshoot-01
 ----
++
 _Observation:_ The VMI remains stuck in the `Scheduling` or `Pending` phase and never enters `Running`.
 
-. Locate and describe the active `virt-launcher` pod:
+. Locate the active `virt-launcher` pod in the target namespace:
 +
 [source,sh]
 ----
 oc get pods -n {user}-troubleshoot-01
-oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-01
 ----
 
-. Scroll down to the *Events* log at the bottom of the pod description. 
+. Describe the `virt-launcher` pod to check its status fields (replace `<virt-launcher-pod-name>` with the pod ID returned from the previous command):
 +
-_Observation:_ You will find `ErrImagePull` and `ImagePullBackOff` status codes.
+[source,sh]
+----
+oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-01
+----
++
+_Observation:_ Look at the *Events* log at the bottom of the output. You will find `ErrImagePull` and `ImagePullBackOff` status codes.
 
 . *Root Cause Analysis (RCA):* The OpenShift cluster nodes are unable to pull the container disk image because the target image resides inside a secured, private image registry, and no matching authentication credentials (pull secrets) exist in the `{user}-troubleshoot-01` namespace.
 
 ==== Step-by-Step Resolution
 
-. Create a Docker registry secret containing the authentication credentials for the secure registry (using the Quay variables provided):
+. Create a Docker registry secret containing the authentication credentials for the secure registry:
 +
 [source,sh]
 ----
-oc create secret docker-registry registry-secret \
-  --docker-server={quay_url} \
-  --docker-username={quay_user} \
-  --docker-password={quay_password} \
-  -n {user}-troubleshoot-01
+oc create secret docker-registry registry-secret --docker-server={quay_url} --docker-username={quay_user} --docker-password={quay_password} -n {user}-troubleshoot-01
 ----
 
-. Link the pull secret to the default ServiceAccount so the pod template can implicitly use it:
+. Link the pull secret to the default ServiceAccount so the pod engine can explicitly leverage it:
 +
 [source,sh]
 ----
 oc secrets link default registry-secret --for=pull -n {user}-troubleshoot-01
 ----
 
-. Stop and restart the virtual machine to trigger a fresh pod deployment cycle:
+. Stop the virtual machine:
 +
 [source,sh]
 ----
 oc virt stop vm1 -n {user}-troubleshoot-01
+----
+
+. Start the virtual machine to trigger a fresh pod deployment cycle:
++
+[source,sh]
+----
 oc virt start vm1 -n {user}-troubleshoot-01
 ----
 
-. Verify that the VMI phase updates successfully to `Running`.
+. Verify that the VMI phase successfully transitions to `Running`:
++
+[source,sh]
+----
+oc get vmi vm1 -n {user}-troubleshoot-01
+----
 
-=== Solution for Task 2: Troubleshooting Failure Scenario B
+== Solution for Task 2: Troubleshooting Failure Scenario B
 
 ==== Guided Investigation & Root Cause Analysis
 
-. Confirm that the VM is failing to scale up:
+. Check the high-level operational state of the VM:
 +
 [source,sh]
 ----
 oc get vm vm2 -n {user}-troubleshoot-01
+----
+
+. Confirm if a tracking Virtual Machine Instance object has been successfully generated:
++
+[source,sh]
+----
 oc get vmi vm2 -n {user}-troubleshoot-01
 ----
 
-. Inspect the cluster events filtered specifically for the `vm2` resource architecture:
+. Inspect the cluster logs filtered chronologically:
 +
 [source,sh]
 ----
 oc get events -n {user}-troubleshoot-01 --sort-by='.metadata.creationTimestamp'
 ----
 
-. Inspect the underlying XML/spec configuration template embedded within the VM definition:
+. Inspect the raw manifest specification layout embedded within the core VM resource definition:
 +
 [source,sh]
 ----
 oc get vm vm2 -o yaml -n {user}-troubleshoot-01
 ----
-Look closely at the `spec.template.spec.volumes` array, specifically items mapping to `cloudInitNoCloud`. Notice that it references a secret named `user-credentials`.
++
+_Observation:_ Look closely at the `spec.template.spec.volumes` block mapping to `cloudInitNoCloud`. Notice that it references a secret explicitly named `user-credentials`.
 
-. *Root Cause Analysis (RCA):* The `vm2` configuration requires custom instance initialization parameters via Cloud-Init, which references an Opaque Secret named `user-credentials`. The VM cannot boot because this dependency is missing from the namespace.
+. *Root Cause Analysis (RCA):* The `vm2` system configuration requires custom instance initialization metadata via Cloud-Init. This architecture references an Opaque Secret resource named `user-credentials`. The VM cannot finish initializing because this prerequisite secret asset is missing from the working namespace environment.
 
 ==== Step-by-Step Resolution
 
-. Generate the missing `user-credentials` secret manifest containing the mandatory `#cloud-config` fields:
+. Generate the missing `user-credentials` secret manifest containing the required `#cloud-config` mapping layers:
 +
 [source,sh]
 ----
@@ -131,19 +151,24 @@ stringData:
 EOF
 ----
 
-. Restart the VM to force the control loop to clear the dependency error:
+. Stop the virtual machine execution:
 +
 [source,sh]
 ----
 oc virt stop vm2 -n {user}-troubleshoot-01
+----
+
+. Restart the virtual machine execution to trigger the orchestration reconciliation loop:
++
+[source,sh]
+----
 oc virt start vm2 -n {user}-troubleshoot-01
 ----
 
-. Verify the operational state:
+. Verify that the tracking validation metric phase displays `Running`:
 +
 [source,sh]
 ----
 oc get vmi vm2 -n {user}-troubleshoot-01
 ----
-The status should now read `Running`.
 
