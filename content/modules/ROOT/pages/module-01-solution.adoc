@@ -12,7 +12,7 @@ Your login is available with:
 
 To access the cluster via the CLI, use the following login command:
 
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 ----
@@ -31,7 +31,7 @@ Your Quay login is available with:
 
 . Check the status of the Virtual Machine Instance:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vmi vm1 -n {user}-troubleshoot-01
 ----
@@ -40,14 +40,14 @@ _Observation:_ The VMI remains stuck in the `Scheduling` or `Pending` phase and 
 
 . Locate the active `virt-launcher` pod in the target namespace:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get pods -n {user}-troubleshoot-01
 ----
 
 . Describe the `virt-launcher` pod to check its status fields (replace `<virt-launcher-pod-name>` with the pod ID returned from the previous command):
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-01
 ----
@@ -60,35 +60,35 @@ _Observation:_ Look at the *Events* log at the bottom of the output. You will fi
 
 . Create a Docker registry secret containing the authentication credentials for the secure registry:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc create secret docker-registry registry-secret --docker-server={quay_url} --docker-username={quay_user} --docker-password={quay_password} -n {user}-troubleshoot-01
 ----
 
 . Link the pull secret to the default ServiceAccount so the pod engine can implicitly leverage it:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc secrets link default registry-secret --for=pull -n {user}-troubleshoot-01
 ----
 
 . Stop the virtual machine:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc virt stop vm1 -n {user}-troubleshoot-01
 ----
 
 . Start the virtual machine to trigger a fresh pod deployment cycle:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc virt start vm1 -n {user}-troubleshoot-01
 ----
 
 . Verify that the VMI phase successfully transitions to `Running`:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vmi vm1 -n {user}-troubleshoot-01
 ----
@@ -99,7 +99,7 @@ oc get vmi vm1 -n {user}-troubleshoot-01
 
 . Check the high-level operational state of the VM:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vm vm2 -n {user}-troubleshoot-01
 ----
@@ -113,14 +113,14 @@ oc get vmi vm2 -n {user}-troubleshoot-01
 
 . Inspect the cluster events filtered chronologically:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get events -n {user}-troubleshoot-01 --sort-by='.metadata.creationTimestamp'
 ----
 
 . Inspect the raw manifest specification layout embedded within the core VM resource definition:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vm vm2 -o yaml -n {user}-troubleshoot-01
 ----
@@ -133,7 +133,7 @@ _Observation:_ Look closely at the `spec.template.spec.volumes` block mapping to
 
 . Generate the missing `user-credentials` secret manifest containing the required `#cloud-config` mapping layers:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 cat <<EOF | oc apply -f -
 apiVersion: v1
@@ -153,21 +153,21 @@ EOF
 
 . Stop the virtual machine execution:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc virt stop vm2 -n {user}-troubleshoot-01
 ----
 
 . Restart the virtual machine execution to trigger the orchestration reconciliation loop:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc virt start vm2 -n {user}-troubleshoot-01
 ----
 
 . Verify that the tracking validation metric phase displays `Running`:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vmi vm2 -n {user}-troubleshoot-01
 ----

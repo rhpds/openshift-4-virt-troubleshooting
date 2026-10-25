@@ -12,7 +12,7 @@ Your login is available with:
 
 To access the cluster via the CLI, use the following login command:
 
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 ----
@@ -49,7 +49,7 @@ A Virtual Machine named `vm1` is configured to boot from a container disk image 
 When attempting to start the VM, the startup process fails and hangs indefinitely. The OpenShift Web Console reports that the system cannot spin up the workload instance.
 
 Run the following command to verify the current non-running state of `vm1`:
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vm vm1 -n {user}-troubleshoot-01
 ----
@@ -68,7 +68,7 @@ A Virtual Machine named `vm2` fails to start as expected in the namespace `{user
 The VM definition appears valid, but it fails during the early orchestration phase before rendering an operating system interface.
 
 Run the following command to verify the current non-running state of `vm2`:
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vm vm2 -n {user}-troubleshoot-01
 ----
@@ -81,43 +81,43 @@ Investigate the object specifications, pinpoint the missing infrastructure depen
 Use the following commands in sequence to analyze the state of either Virtual Machine (`vm1` or `vm2`) and isolate the root cause of the startup failures:
 
 Check high-level VM states:
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vm -n {user}-troubleshoot-01
 ----
 
 Check high-level VMI states:
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vmi -n {user}-troubleshoot-01
 ----
 
 Inspect the specific VMI definition and system events (replace `<vm-name>` with `vm1` or `vm2`):
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc describe vmi <vm-name> -n {user}-troubleshoot-01
 ----
 
 Locate the underlying virt-launcher pod:
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get pods -n {user}-troubleshoot-01 -l kubevirt.io/created-by=<vmi-uid>
 ----
 
 Describe the virt-launcher pod configuration (replace `<virt-launcher-pod>` with the pod ID found above):
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-01
 ----
 
 Check storage components:
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get pvc,dv -n {user}-troubleshoot-01
 ----
 
 Query cluster events sorted chronologically:
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get events -n {user}-troubleshoot-01 --sort-by='.metadata.creationTimestamp'
 ----
