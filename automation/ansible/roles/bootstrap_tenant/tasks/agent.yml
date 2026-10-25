@@ -1,34 +1,7 @@
 ---
 
-- name: Create healthy-flat-net network attachment definition
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: k8s.cni.cncf.io/v1
-      kind: NetworkAttachmentDefinition
-      metadata:
-        annotations:
-          k8s.v1.cni.cncf.io/resourceName: bridge.network.kubevirt.io/br0
-        name: healthy-flat-net
-        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-03"
-      spec:
-        config: |
-          {
-            "name":"healthy-flat-net",
-            "type":"bridge",
-            "cniVersion":"0.3.1",
-            "bridge":"br0",
-            "macspoofchk":true,
-            "ipam":{},
-            "preserveDefaultVlan":false
-          }
-
 - name: "Deploy broken VM with agent failure 1"
   kubernetes.core.k8s:
     state: present
     definition: "{{ lookup('template', 'vm-agent1.yaml.j2') }}"
 
-- name: "Deploy broken VM with agent failure 2"
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'vm-agent2.yaml.j2') }}"
