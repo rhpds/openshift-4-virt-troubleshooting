@@ -76,14 +76,14 @@ oc secrets link default registry-secret --for=pull -n {user}-troubleshoot-01
 +
 [source,sh,subs="attributes+"]
 ----
-oc virt stop vm1 -n {user}-troubleshoot-01
+virtctl stop vm1 -n {user}-troubleshoot-01
 ----
 
 . Start the virtual machine to trigger a fresh pod deployment cycle:
 +
 [source,sh,subs="attributes+"]
 ----
-oc virt start vm1 -n {user}-troubleshoot-01
+virtctl start vm1 -n {user}-troubleshoot-01
 ----
 
 . Verify that the VMI phase successfully transitions to `Running`:
@@ -106,7 +106,7 @@ oc get vm vm2 -n {user}-troubleshoot-01
 
 . Confirm if a tracking Virtual Machine Instance object has been successfully generated:
 +
-[source,sh]
+[source,sh,subs="attributes+"]
 ----
 oc get vmi vm2 -n {user}-troubleshoot-01
 ----
@@ -118,14 +118,22 @@ oc get vmi vm2 -n {user}-troubleshoot-01
 oc get events -n {user}-troubleshoot-01 --sort-by='.metadata.creationTimestamp'
 ----
 
-. Inspect the raw manifest specification layout embedded within the core VM resource definition:
+. Locate the active `virt-launcher` pod in the target namespace:
 +
 [source,sh,subs="attributes+"]
 ----
-oc get vm vm2 -o yaml -n {user}-troubleshoot-01
+oc get pods -n {user}-troubleshoot-01
+----
+
+. Describe the `virt-launcher` pod to check its warning flags (replace `<virt-launcher-pod-name>` with the pod ID returned from the previous command):
++
+[source,sh,subs="attributes+"]
+----
+oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-01
 ----
 +
-_Observation:_ Look closely at the `spec.template.spec.volumes` block mapping to `cloudInitNoCloud`. Notice that it references a secret explicitly named `user-credentials`.
+_Observation:_ Look closely at the *Events* section at the bottom of the pod description. You will see warning events explicitly stating that the pod cannot start because a volume mount is failing due to a missing secret named `user-credentials`.
+
 
 . *Root Cause Analysis (RCA):* The `vm2` system configuration requires custom instance initialization metadata via Cloud-Init. This architecture references an Opaque Secret resource named `user-credentials`. The VM cannot finish initializing because this prerequisite secret asset is missing from the working namespace environment.
 
@@ -155,14 +163,14 @@ EOF
 +
 [source,sh,subs="attributes+"]
 ----
-oc virt stop vm2 -n {user}-troubleshoot-01
+virtctl stop vm2 -n {user}-troubleshoot-01
 ----
 
 . Restart the virtual machine execution to trigger the orchestration reconciliation loop:
 +
 [source,sh,subs="attributes+"]
 ----
-oc virt start vm2 -n {user}-troubleshoot-01
+virtctl start vm2 -n {user}-troubleshoot-01
 ----
 
 . Verify that the tracking validation metric phase displays `Running`:

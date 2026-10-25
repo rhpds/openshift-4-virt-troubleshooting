@@ -36,7 +36,7 @@ This lab focuses on diagnosing and resolving Virtual Machine startup issues in O
 ====
 This lab is designed to give you hands-on experience with real-world scenarios. We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issues on your own first—that is where the best learning happens! 
 
-If you get stuck or want to verify your findings, the companion *Solution Guide* is always available to help guide you through the next steps.
+If you get stuck or want to verify your findings, the companion *Guided Solution* is always available to help guide you through the next steps.
 ====
 
 == Tasks
@@ -51,7 +51,7 @@ When attempting to start the VM, the startup process fails and hangs indefinitel
 Run the following command to verify the current non-running state of `vm1`:
 [source,sh,subs="attributes+"]
 ----
-oc get vm vm1 -n {user}-troubleshoot-01
+oc get vmi vm1 -n {user}-troubleshoot-01
 ----
 
 ==== Reference Documentation & Setup
@@ -70,7 +70,7 @@ The VM definition appears valid, but it fails during the early orchestration pha
 Run the following command to verify the current non-running state of `vm2`:
 [source,sh,subs="attributes+"]
 ----
-oc get vm vm2 -n {user}-troubleshoot-01
+oc get vmi vm2 -n {user}-troubleshoot-01
 ----
 
 ==== Goal
@@ -101,7 +101,7 @@ oc describe vmi <vm-name> -n {user}-troubleshoot-01
 Locate the underlying virt-launcher pod:
 [source,sh,subs="attributes+"]
 ----
-oc get pods -n {user}-troubleshoot-01 -l kubevirt.io/created-by=<vmi-uid>
+oc get pods -n {user}-troubleshoot-01 
 ----
 
 Describe the virt-launcher pod configuration (replace `<virt-launcher-pod>` with the pod ID found above):
