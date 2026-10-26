@@ -3,69 +3,72 @@
 == Task 1 Solution: CNI and Network Attachment (Layer 2 Fault)
 
 === Step 1: Identify the CNI Failure
-Check the events of the failing virt-launcher pod to discover why it cannot start.
+Check the events of the failing virt-launcher pod for `vm3` to discover why it cannot start.
 
+[source,sh,subs="attributes+"]
 ----
-oc describe pod <virt-launcher-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc describe pod <virt-launcher-vm3-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
 ----
 
-*Diagnostic finding:* At the bottom of the output, you will see a Multus network warning similar to:
-`Warning FailedCreatePodSandBox ... device "enp2s0" already exists and is not a bridge`.
-This indicates the NetworkAttachmentDefinition is pointing to a physical network interface card instead of the required Linux bridge.
+*Diagnostic finding:* At the bottom of the output, you will see a Multus network warning similar to: `Warning FailedCreatePodSandBox …​ device "enp2s0" already exists and is not a bridge.` This indicates the NetworkAttachmentDefinition is pointing to a physical network interface card instead of the required Linux bridge.
 
 === Step 2: Fix the NetworkAttachmentDefinition
 Edit the broken NetworkAttachmentDefinition to point to the correct bridge.
 
+[source,sh,subs="attributes+"]
 ----
 oc edit networkattachmentdefinition vm-private-net -n {{ bootstrap_tenant_username }}-troubleshoot-02
 ----
-*(Alternatively, in the OpenShift Web Console: Navigate to Networking -> NetworkAttachmentDefinitions -> vm-private-net -> YAML tab).*
+*(Alternatively, in the OpenShift Web Console: Navigate to Networking → NetworkAttachmentDefinitions → vm-private-net → YAML tab).*
 
-Locate the JSON config block and change `"bridge":"enp2s0"` to `"bridge":"br0"`. 
-
-Save the changes. The CNI plugin will immediately re-attempt the connection, successfully attach to `br0`, and the VM will boot into a Running state.
+. Locate the JSON config block and change `"bridge":"enp2s0"` to `"bridge":"br0"`.
+. Save the changes. The CNI plugin will immediately re-attempt the connection, successfully attach to `br0`, and `vm3` will boot into a `Running` state.
 
 == Task 2 Solution: Scheduling and Cloud-Init (Double Fault)
 
 === Step 1: Identify the Hardware Binding Error
-Check the events of the pending pod to find the scheduling failure.
+Check the events of the pending pod for `vm4` to find the scheduling failure.
 
+[source,sh,subs="attributes+"]
 ----
+oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
 oc describe pod <virt-launcher-vm4-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
 ----
 
 *Diagnostic finding:* You will see a scheduler warning: `0/X nodes are available: insufficient hardware resources (SR-IOV)`. The VM is requesting specialized SR-IOV hardware that does not exist on standard worker nodes.
 
 === Step 2: Fix the Interface Hardware Type
-*Note: You must fix this in the YAML tab because the UI Network Interfaces tab will auto-correct it for you, bypassing the learning objective.*
+_Note: You must fix this in the YAML tab because the UI Network Interfaces tab will auto-correct it for you, bypassing the learning objective._
 
-1. In the Web Console, navigate to Virtualization -> VirtualMachines and click on `vm4`.
-2. Click directly on the **YAML** tab.
-3. Scroll down to `spec.template.spec.domain.devices.interfaces`.
-4. Delete `sriov: {}` and type `bridge: {}` in its place.
-5. Click **Save**. The pod will instantly get scheduled and the VM will boot up.
+. In the Web Console, navigate to *Virtualization* → *VirtualMachines* and click on *vm4*.
+. Click directly on the *YAML* tab.
+. Scroll down to `spec.template.spec.domain.devices.interfaces`.
+. Delete `sriov: {}` and type `bridge: {}` in its place.
+. Click *Save*. The pod will instantly get scheduled and `vm4` will boot up.
 
 === Step 3: Discover the Layer 3 Typo
 The VM is now running, but it has no network connectivity.
 
-1. Click the **Console** tab for `vm4` in the OpenShift UI.
-2. Log into the Guest OS (Username: `cloud-user`, Password: `password123`).
-3. Run `ip a` and inspect `eth1`.
+. Click the *Console* tab for *vm4* in the OpenShift UI.
+. Log into the Guest OS (Username: `cloud-user`, Password: `password123`).
+. Run `ip a` and inspect `eth1`.
 
-*Diagnostic finding:* `eth1` is configured with `10.10.10.50/32`. The `/32` subnet mask mathematically isolates the VM, preventing it from routing traffic to its gateway.
+*Diagnostic finding:* `eth1` is configured with a `/32` mask (e.g., `10.10.10.X/32`). The `/32` subnet mask mathematically isolates the VM, preventing it from routing traffic to its gateway or other students' VMs.
 
 === Step 4: Correct the Cloud-Init Injection
 Fix the subnet mask injected by Cloud-Init and restart the VM to apply it.
 
-1. Navigate to the **Configuration** tab for `vm4`, then the **Scripts** sub-tab.
-2. Under the **Network Data** section, click **Edit**.
-3. Change the address line from `/32` to `/24`:
-
+. Navigate to the *Configuration* tab for *vm4*, then the *Scripts* sub-tab.
+. Under the *Network Data* section, click *Edit*.
+. Change the address line from `/32` to `/24`. *Do not change the dynamically generated IP address itself*, only the mask suffix:
++
+[source,yaml]
 ----
 addresses:
-  - 10.10.10.50/24
+  - 10.10.10.X/24
 ----
-
-4. Click **Save**.
-5. Because Cloud-Init only executes during the boot sequence, click the **Actions** dropdown at the top right and select **Restart**.
-6. Once rebooted, open the **Console** and run `ip a` to verify `eth1` now correctly shows `/24`. Traffic will now route successfully.
++
+. Click *Save*.
+. Because Cloud-Init only executes during the boot sequence, click the *Actions* dropdown at the top right and select *Restart*.
+. Once rebooted, open the *Console* and run `ip a` to verify `eth1` now correctly shows `/24`. Traffic will now route successfully.
