@@ -6,7 +6,7 @@
 
 
 
-* xref:SolutionGuide.adoc[Guided Solution]
+* Guided Solution
 ** xref:module-01-solution.adoc[Module 1 Solution]
 ** xref:module-02-solution.adoc[Module 2 Solution]
 ** xref:module-03-solution.adoc[Module 3 Solution]
