@@ -3,14 +3,14 @@
 == Environment Access & Credentials
 
 === Credentials for the OpenShift Console
-Your OpenShift cluster console is available {openshift_console_url}[here^].
+The OpenShift web console is available in the *OCP Console* tab on the right side of this screen. To open it in a separate browser tab instead, click {openshift_console_url}[here^].
 
 Your login is available with:
 
 - *User:* {user}
 - *Password:* {password}
 
-To access the cluster via the CLI, use the following login command:
+To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
 
 [source,sh,subs="attributes+"]
 ----
