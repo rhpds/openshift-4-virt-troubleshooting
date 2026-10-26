@@ -1,3 +1,8 @@
+{# Calculate the unique static IP host octet based on the dynamic tenant username string #}
+{% set base_ip = "10.10.10" %}
+{% set start_host = 50 %}
+{% set calculated_host = (bootstrap_tenant_username | hash('md5') | int(base=16) % 150) + start_host %}
+---
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
@@ -8,7 +13,7 @@ spec:
   template:
     metadata:
       labels:
-        kubevirt.io/vm: vm-lab1
+        kubevirt.io/vm: vm4
     spec:
       domain:
         devices:
@@ -53,4 +58,4 @@ spec:
               ethernets:
                 eth1:
                   addresses:
-                    - 10.10.10.50/32
+                    - {{ base_ip }}.{{ calculated_host }}/32
