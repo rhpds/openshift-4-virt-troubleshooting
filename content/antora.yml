@@ -14,7 +14,7 @@ asciidoc:
     openshift_console_url: 'https://console-openshift-console.apps.cluster-%GUID%.example.com'
     user: user1
     password: changeme
-    quay_hostname: 'quay-%GUID%.apps.cluster-%GUID%.example.com'
-    quay_url: 'https://quay-%GUID%.apps.cluster-%GUID%.example.com'
+    quay_hostname: 'quay.apps.cluster-%GUID%.example.com'
+    quay_url: 'https://quay.apps.cluster-%GUID%.example.com'
     quay_user: quayadmin
     quay_password: changeme
