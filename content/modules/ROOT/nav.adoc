@@ -1,17 +1,17 @@
 * xref:index.adoc[Lab Overview]
 
-* xref:module-01.adoc[Module 1 Troubleshooting]
-* xref:module-02.adoc[Module 2 Troubleshooting]
-* xref:module-03.adoc[Module 3 Troubleshooting]
-* xref:module-04.adoc[Module 4 Troubleshooting]
-* xref:module-05.adoc[Module 5 Troubleshooting]
+* xref:module-01.adoc[Module 1: VM Startup Failures]
+* xref:module-02.adoc[Module 2: Network Attachment & Scheduling]
+* xref:module-03.adoc[Module 3: Guest Readiness & Traffic]
+* xref:module-04.adoc[Module 4: VM Connectivity]
+* xref:module-05.adoc[Module 5: Guest Agent]
 * xref:conclusion.adoc[Conclusion]
 
 
 
 * Guided Solution
-** xref:module-01-solution.adoc[Module 1 Solution]
-** xref:module-02-solution.adoc[Module 2 Solution]
-** xref:module-03-solution.adoc[Module 3 Solution]
+** xref:module-01-solution.adoc[Module 1 Solution: VM Startup Failures]
+** xref:module-02-solution.adoc[Module 2 Solution: Network Attachment & Scheduling]
+** xref:module-03-solution.adoc[Module 3 Solution: Guest Readiness & Traffic]
 
 
