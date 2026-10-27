@@ -42,7 +42,7 @@ A Virtual Machine named `vm3` is deployed in the namespace `{user}-troubleshoot-
 The VM's underlying orchestration pod is unable to initialize because it cannot bind to the requested secondary network. A configuration error in the cluster's network attachment definition is causing a physical hardware collision.
 
 ==== Reference Documentation & Setup
-- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-connecting-vm-to-linux-bridge[Connecting a virtual machine to a Linux bridge network^].
+- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/networking#virt-connecting-vm-to-linux-bridge[Connecting a virtual machine to a Linux bridge network^].
 - The VM relies on a custom NetworkAttachmentDefinition named `vm-private-net`.
 
 ==== Goal
@@ -56,7 +56,7 @@ A second Virtual Machine named `vm4` is deployed in the same namespace but remai
 Furthermore, once the hardware request is corrected and the VM boots, it still lacks network connectivity. An error in the Cloud-Init configuration has injected a mathematically isolated subnet mask into the Guest OS, preventing traffic routing.
 
 ==== Reference Documentation & Setup
-- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-configuring-sriov-net-for-vms[Configuring SR-IOV networks for virtual machines^].
+- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/networking#virt-connecting-vm-to-sriov[Connecting a virtual machine to an SR-IOV network^].
 - Review Cloud-Init network configuration best practices for static IP injection.
 
 ==== Goal

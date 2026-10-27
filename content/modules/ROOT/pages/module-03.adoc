@@ -53,7 +53,7 @@ oc get vmi vm5 -n {user}-troubleshoot-03
 ----
 
 ==== Reference Documentation
-* link:https://redhat.com[Installing and configuring guest communication agents^]
+* link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/managing-vms#virt-installing-qemu-guest-agent[Installing the QEMU guest agent and VirtIO drivers^]
 
 ==== Goal
 Investigate the virtual machine failure, perform the necessary troubleshooting steps, and bring the VM up to a completely healthy status where it can receive network traffic.

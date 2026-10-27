@@ -63,7 +63,7 @@ vm1    20h   Scheduling                    False
 ----
 
 ==== Reference Documentation & Setup
-* Consult the Red Hat documentation on link:https://redhat.com[Creating VMs from Container Disks^].
+* Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/advanced-vm-creation#virt-creating-vms-from-container-disks[Creating VMs by using container disks^].
 
 ==== Goal
 Investigate the cluster components, determine why the image deployment is failing, implement a fix, and successfully transition `vm1` to a `Running` state.
