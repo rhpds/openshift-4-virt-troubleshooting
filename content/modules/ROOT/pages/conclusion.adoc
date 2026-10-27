@@ -1,0 +1,22 @@
+= Conclusion
+
+Congratulations! You have completed the OpenShift Virtualization Troubleshooting Workshop.
+
+== What You Practiced
+
+* Following a structured diagnostic workflow: VM status, VMI conditions, virt-launcher pod events, and logs.
+* Diagnosing VM startup and provisioning failures.
+* Debugging VM networking across Multus NetworkAttachmentDefinitions, NMState bridges, and NetworkPolicies.
+* Validating QEMU Guest Agent communication and restoring Day 2 management features.
+
+== Key Takeaways
+
+* Start at the VM and work down the chain: VM, VMI, virt-launcher pod, Events, logs.
+* VM networking is a chain (guest interface, NAD, NMState bridge, physical NIC), and a break at any layer looks like "the VM can't reach X".
+* NetworkPolicies silently drop traffic, so check them early.
+* The `AgentConnected` VMI condition is the single indicator of guest agent health.
+
+== Next Steps
+
+* Revisit the Guided Solution pages for any scenario you want to review.
+* Apply the same workflow to the VMs in your own environments.

@@ -1,0 +1,88 @@
+= Lab 4: VM Network Connectivity Troubleshooting
+
+== Environment Access & Credentials
+
+=== Credentials for the OpenShift Console
+The OpenShift web console is available in the *OCP Console* tab on the right side of this screen. To open it in a separate browser tab instead, click {openshift_console_url}[here^].
+
+Your login is available with:
+
+* *User:* {user}
+* *Password:* {password}
+
+To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
+
+[source,sh,subs="attributes+"]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
+== Overview & Objectives
+
+A virtual machine is running but cannot communicate with external systems or other cluster resources. By the end of this module, you will:
+
+* Inspect the interfaces and networks attached to a running VMI.
+* Validate Multus NetworkAttachmentDefinitions and the NMState bridge behind them.
+* Identify network isolation caused by restrictive NetworkPolicies.
+* Trace the packet path from the guest interface to the bridge to the physical network to isolate where connectivity breaks.
+
+[NOTE]
+====
+We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issue on your own first -- that is where the best learning happens!
+====
+
+== Tasks
+
+=== Task 1: Troubleshooting VM Connectivity
+
+==== Problem Scenario
+// TODO: replace <vm-name> with the broken VM deployed for this lab by the environment automation.
+A Virtual Machine named `<vm-name>` is running in the namespace `{user}-troubleshoot-04`, but it cannot reach its gateway or the target service it depends on.
+
+Run the following command to verify that the VM is running:
+[source,sh,subs="attributes+"]
+----
+oc get vmi <vm-name> -n {user}-troubleshoot-04
+----
+
+==== Goal
+Confirm the connectivity failure from inside the VM, find which layer of the network chain is broken (VM network binding, NetworkAttachmentDefinition, NMState bridge, or NetworkPolicy), fix it, and verify that the VM can reach the target again.
+
+== Suggested Troubleshooting Reference Workflow
+
+Remember that VM networking is a chain: *guest interface -> NAD -> NMState bridge -> physical NIC*. Work through it in order.
+
+Confirm the failure from inside the VM (for example with `ping` or `curl` against the gateway or target service):
+[source,sh,subs="attributes+"]
+----
+virtctl console <vm-name> -n {user}-troubleshoot-04
+----
+
+Inspect the VMI interfaces and attached networks (see `spec.networks` and `status.interfaces`):
+[source,sh,subs="attributes+"]
+----
+oc describe vmi <vm-name> -n {user}-troubleshoot-04
+----
+
+Inspect the NetworkAttachmentDefinitions:
+[source,sh,subs="attributes+"]
+----
+oc get network-attachment-definitions -n {user}-troubleshoot-04
+oc describe network-attachment-definitions <nad-name> -n {user}-troubleshoot-04
+----
+
+Validate the node network configuration and confirm the bridge exists and is attached to the correct NIC:
+[source,sh]
+----
+oc get nncp,nnce
+oc describe nncp <policy-name>
+----
+
+NetworkPolicies silently drop traffic, so always check them when a VM can't reach a target:
+[source,sh,subs="attributes+"]
+----
+oc get networkpolicy -n {user}-troubleshoot-04
+oc describe networkpolicy <policy-name> -n {user}-troubleshoot-04
+----
+
+Typical faults to look for: an incorrect network binding, a broken NAD, an NMState bridge issue (missing bridge, wrong NIC, wrong VLAN), or a restrictive NetworkPolicy.

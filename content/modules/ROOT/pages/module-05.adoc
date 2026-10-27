@@ -1,0 +1,78 @@
+= Lab 5: Guest Agent Troubleshooting
+
+== Environment Access & Credentials
+
+=== Credentials for the OpenShift Console
+The OpenShift web console is available in the *OCP Console* tab on the right side of this screen. To open it in a separate browser tab instead, click {openshift_console_url}[here^].
+
+Your login is available with:
+
+* *User:* {user}
+* *Password:* {password}
+
+To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
+
+[source,sh,subs="attributes+"]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
+== Overview & Objectives
+
+A virtual machine is operational, but platform integrations that depend on the QEMU Guest Agent -- graceful shutdown, in-guest IP reporting, filesystem freeze/thaw, and memory ballooning -- do not work. By the end of this module, you will:
+
+* Validate guest agent connectivity from the VMI using the `AgentConnected` condition.
+* Diagnose a missing or disabled QEMU Guest Agent inside the guest OS.
+* Identify a missing VirtIO serial channel on the VM.
+* Recognize SELinux or firewall restrictions that block the guest agent.
+
+[NOTE]
+====
+We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issue on your own first -- that is where the best learning happens!
+====
+
+== Tasks
+
+=== Task 1: Restoring Guest Agent Communication
+
+==== Problem Scenario
+// TODO: replace <vm-name> with the broken VM deployed for this lab by the environment automation.
+A Virtual Machine named `<vm-name>` is running in the namespace `{user}-troubleshoot-05`, but it reports no guest IP address and graceful shutdown does not work.
+
+Run the following command and note the missing IP address:
+[source,sh,subs="attributes+"]
+----
+oc get vmi <vm-name> -n {user}-troubleshoot-05 -o wide
+----
+
+==== Goal
+Determine why the platform cannot talk to the guest agent, restore it, and verify that the VMI reports the guest IP and `AgentConnected: True`.
+
+== Suggested Troubleshooting Reference Workflow
+
+Check the guest agent condition. Look for `AgentConnected` being absent or `False`:
+[source,sh,subs="attributes+"]
+----
+oc describe vmi <vm-name> -n {user}-troubleshoot-05
+----
+
+Open the serial console and inspect the guest:
+[source,sh,subs="attributes+"]
+----
+virtctl console <vm-name> -n {user}-troubleshoot-05
+----
+
+Inside the guest, check each of the following:
+
+* Is the `qemu-guest-agent` package installed?
+* Is the service running and enabled? (`systemctl status qemu-guest-agent`)
+* Is the VirtIO channel present? (`org.qemu.guest_agent.0`)
+* Is SELinux or a firewall blocking the agent? (check the audit logs for denials)
+
+Typical faults to look for: a missing agent package, a disabled service, a missing VirtIO channel in the VM spec (a restart is required after adding it), or an SELinux/firewall restriction.
+
+Verify recovery:
+[source,sh,subs="attributes+"]
+----
+oc get vmi <vm-name> -n {user}-troubleshoot-05 -o wide
+----
