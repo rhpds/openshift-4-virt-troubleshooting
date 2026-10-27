@@ -7,8 +7,8 @@ Check the events of the failing virt-launcher pod for `vm3` to discover why it c
 
 [source,sh,subs="attributes+"]
 ----
-oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
-oc describe pod <virt-launcher-vm3-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc get pods -n {user}-troubleshoot-02
+oc describe pod <virt-launcher-vm3-pod> -n {user}-troubleshoot-02
 ----
 
 *Diagnostic finding:* At the bottom of the output, you will see a Multus network warning similar to: `Warning FailedCreatePodSandBox …​ device "enp2s0" already exists and is not a bridge.` This indicates the NetworkAttachmentDefinition is pointing to a physical network interface card instead of the required Linux bridge.
@@ -18,7 +18,7 @@ Edit the broken NetworkAttachmentDefinition to point to the correct bridge.
 
 [source,sh,subs="attributes+"]
 ----
-oc edit networkattachmentdefinition vm-private-net -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc edit networkattachmentdefinition vm-private-net -n {user}-troubleshoot-02
 ----
 *(Alternatively, in the OpenShift Web Console: Navigate to Networking → NetworkAttachmentDefinitions → vm-private-net → YAML tab).*
 
@@ -32,8 +32,8 @@ Check the events of the pending pod for `vm4` to find the scheduling failure.
 
 [source,sh,subs="attributes+"]
 ----
-oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
-oc describe pod <virt-launcher-vm4-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc get pods -n {user}-troubleshoot-02
+oc describe pod <virt-launcher-vm4-pod> -n {user}-troubleshoot-02
 ----
 
 *Diagnostic finding:* You will see a scheduler warning: `0/X nodes are available: insufficient hardware resources (SR-IOV)`. The VM is requesting specialized SR-IOV hardware that does not exist on standard worker nodes.

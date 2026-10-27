@@ -54,8 +54,16 @@ Run the following command to verify the current non-running state of `vm1`:
 oc get vmi vm1 -n {user}-troubleshoot-01
 ----
 
+The output should look similar to this:
+
+[source,texinfo]
+----
+NAME   AGE   PHASE        IP    NODENAME   READY
+vm1    20h   Scheduling                    False
+----
+
 ==== Reference Documentation & Setup
-* Consult the Red Hat documentation on link:https://redhat.com[Creating VMs from Container Disks].
+* Consult the Red Hat documentation on link:https://redhat.com[Creating VMs from Container Disks^].
 
 ==== Goal
 Investigate the cluster components, determine why the image deployment is failing, implement a fix, and successfully transition `vm1` to a `Running` state.
@@ -71,6 +79,14 @@ Run the following command to verify the current non-running state of `vm2`:
 [source,sh,subs="attributes+"]
 ----
 oc get vmi vm2 -n {user}-troubleshoot-01
+----
+
+The output should look similar to this:
+
+[source,texinfo]
+----
+NAME   AGE   PHASE        IP    NODENAME   READY
+vm2    20h   Scheduling                    False
 ----
 
 ==== Goal

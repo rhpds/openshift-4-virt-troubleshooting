@@ -62,6 +62,13 @@ Your login is available with:
 * *User:* {user}
 * *Password:* {password}
 
+To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
+
+[source,sh,subs="attributes+"]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
 === Credentials for the Quay Registry
 
 The Quay registry is available in the *Quay* tab on the right side of this screen. To open it in a separate browser tab instead, click {quay_url}[here^].

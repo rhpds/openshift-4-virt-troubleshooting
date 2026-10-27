@@ -37,12 +37,12 @@ If you get stuck or want to verify your findings, the companion *Guided Solution
 === Task 1: Troubleshooting CNI and Network Attachment (Layer 2 Fault)
 
 ==== Problem Scenario
-A Virtual Machine named `vm3` is deployed in the namespace `{{ bootstrap_tenant_username }}-troubleshoot-02` but fails to start. 
+A Virtual Machine named `vm3` is deployed in the namespace `{user}-troubleshoot-02` but fails to start. 
 
 The VM's underlying orchestration pod is unable to initialize because it cannot bind to the requested secondary network. A configuration error in the cluster's network attachment definition is causing a physical hardware collision.
 
 ==== Reference Documentation & Setup
-- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-connecting-vm-to-linux-bridge[Connecting a virtual machine to a Linux bridge network].
+- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-connecting-vm-to-linux-bridge[Connecting a virtual machine to a Linux bridge network^].
 - The VM relies on a custom NetworkAttachmentDefinition named `vm-private-net`.
 
 ==== Goal
@@ -56,7 +56,7 @@ A second Virtual Machine named `vm4` is deployed in the same namespace but remai
 Furthermore, once the hardware request is corrected and the VM boots, it still lacks network connectivity. An error in the Cloud-Init configuration has injected a mathematically isolated subnet mask into the Guest OS, preventing traffic routing.
 
 ==== Reference Documentation & Setup
-- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-configuring-sriov-net-for-vms[Configuring SR-IOV networks for virtual machines].
+- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.14/html/virtualization/virtual-machine-networking#virt-configuring-sriov-net-for-vms[Configuring SR-IOV networks for virtual machines^].
 - Review Cloud-Init network configuration best practices for static IP injection.
 
 ==== Goal
@@ -69,39 +69,39 @@ Use the following commands to navigate the cluster objects, inspect network defi
 Check the high-level VM and VMI states in your namespace:
 [source,sh,subs="attributes+"]
 ----
-oc get vm -n {{ bootstrap_tenant_username }}-troubleshoot-02
-oc get vmi -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc get vm -n {user}-troubleshoot-02
+oc get vmi -n {user}-troubleshoot-02
 ----
 
 Identify the underlying virt-launcher pods:
 [source,sh,subs="attributes+"]
 ----
-oc get pods -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc get pods -n {user}-troubleshoot-02
 ----
 
 Describe a specific virt-launcher pod to uncover scheduling or CNI initialization errors (replace `<virt-launcher-pod>` with the target pod name):
 [source,sh,subs="attributes+"]
 ----
-oc describe pod <virt-launcher-pod> -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-02
 ----
 
 Inspect the custom NetworkAttachmentDefinition causing the Layer 2 fault:
 [source,sh,subs="attributes+"]
 ----
-oc get networkattachmentdefinition -n {{ bootstrap_tenant_username }}-troubleshoot-02
-oc describe networkattachmentdefinition vm-private-net -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc get networkattachmentdefinition -n {user}-troubleshoot-02
+oc describe networkattachmentdefinition vm-private-net -n {user}-troubleshoot-02
 ----
 
 Review and edit the VM configuration to fix hardware binding errors:
 [source,sh,subs="attributes+"]
 ----
-oc get vm vm4 -o yaml -n {{ bootstrap_tenant_username }}-troubleshoot-02
+oc get vm vm4 -o yaml -n {user}-troubleshoot-02
 ----
 
 Access the Guest OS console once a VM is running (Username: `cloud-user` / Password: `password123`):
 [source,sh,subs="attributes+"]
 ----
-virtctl console vm4 -n {{ bootstrap_tenant_username }}-troubleshoot-02
+virtctl console vm4 -n {user}-troubleshoot-02
 ----
 
 Verify the network configuration applied by Cloud-Init inside the Guest OS:
