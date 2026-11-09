@@ -1,0 +1,71 @@
+- name: Create quota-admin Role
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: quota-admin
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-04"
+      rules:
+        - apiGroups: [""]
+          resources: ["resourcequotas"]
+          verbs: ["get", "list", "watch", "delete", "update", "patch"]
+
+- name: Create quota-admin RoleBinding
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: quota-admin-binding
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-04"
+      subjects:
+        - kind: User
+          name: "{{ bootstrap_tenant_username }}"
+          apiGroup: rbac.authorization.k8s.io
+      roleRef:
+        kind: Role
+        name: quota-admin
+        apiGroup: rbac.authorization.k8s.io
+
+- name: Create restrictive ResourceQuota (Quota Fault)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: migration-quota
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-04"
+      spec:
+        hard:
+          requests.memory: "3000Mi"
+
+- name: Deploy anchor-pod for affinity testing
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: anchor-pod
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-04"
+        labels:
+          app: anchor
+      spec:
+        containers:
+          - name: sleep
+            image: registry.access.redhat.com/ubi9/ubi-minimal
+            command: ["sleep", "infinity"]
+
+- name: Deploy vm5 (Quota Migration Fault)
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm5-quota-fault.yaml.j2') }}"
+
+- name: Deploy vm6 (Affinity Migration Fault)
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm6-affinity-fault.yaml.j2') }}"
