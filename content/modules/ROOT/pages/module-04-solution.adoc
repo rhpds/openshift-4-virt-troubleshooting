@@ -1,0 +1,115 @@
+= Lab 4: Guided Solution - Live Migration and Scheduling Troubleshooting
+
+== Overview
+
+This is the companion solution guide for Lab 4. It provides the exact diagnostic steps, commands, and resolutions required to fix the Live Migration faults for both `vm6` and `vm7`. 
+
+You can complete these steps using either the OpenShift Web Console or the CLI.
+
+== Task 1 Solution: Troubleshooting Quota-Blocked Migrations
+
+=== 1. Diagnosis
+When you attempt to migrate `vm6`, the UI shows the status as `Preparing for migration`, but the process hangs. Because a migration target pod requires temporary resources to spin up, it is being blocked by a namespace boundary before the pod is even created.
+
+*CLI Diagnosis:*
+Run the following command to check the namespace events for silent API rejections:
+[source,sh,subs="attributes+"]
+----
+oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp'
+----
+*Output snippet to look for:*
+`Warning   FailedCreate  ...  Error creating: pods "virt-launcher-vm6-..." is forbidden: exceeded quota: migration-quota...`
+
+*GUI Diagnosis:*
+1. Navigate to *Home -> Events* (or *Administration -> Events*).
+2. Set the Project to `{user}-troubleshoot-04`.
+3. Look for a `FailedCreate` warning explicitly stating the `migration-quota` has been exceeded.
+
+=== 2. Resolution
+The migration requires temporary RAM to spin up the target pod, which breaches the `migration-quota` limits. Your user has been granted the `quota-admin` role to clear this roadblock.
+
+*CLI Fix:*
+[source,sh,subs="attributes+"]
+----
+oc delete resourcequota migration-quota -n {user}-troubleshoot-04
+----
+
+*GUI Fix:*
+1. Navigate to *Administration -> ResourceQuotas*.
+2. Ensure you are in the `{user}-troubleshoot-04` project.
+3. Click the *Options menu (three dots)* next to `migration-quota` and select *Delete ResourceQuota*.
+
+=== 3. Verification
+As soon as the quota is deleted, the Kubernetes API allows the target pod to spawn. The migration of `vm6` will automatically resume and complete.
+[source,sh,subs="attributes+"]
+----
+oc get vmi vm6 -n {user}-troubleshoot-04
+----
+*(Wait for the status to return to `Running` on the new worker node).*
+
+== Task 2 Solution: Troubleshooting Scheduling Conflicts
+
+=== 1. Diagnosis
+When you attempt to migrate `vm7`, the UI successfully transitions to `Migrating`, but the process stalls indefinitely. Unlike Task 1, the target pod is successfully created but cannot find a valid node to run on.
+
+*CLI Diagnosis:*
+First, identify the stuck target pod:
+[source,sh,subs="attributes+"]
+----
+oc get pods -n {user}-troubleshoot-04
+----
+*(Note the `virt-launcher-vm7-...` pod stuck in a `Pending` state).*
+
+Inspect the pod's scheduling events:
+[source,sh,subs="attributes+"]
+----
+oc describe pod <insert-virt-launcher-vm7-pod-name> -n {user}-troubleshoot-04
+----
+*Output snippet to look for:*
+`Warning  FailedScheduling  ...  0/X nodes are available: X node(s) didn't match pod affinity rules.`
+
+*GUI Diagnosis:*
+1. Navigate to *Workloads -> Pods* and locate the `virt-launcher-vm7-...` pod stuck in `Pending`.
+2. Click the pod and navigate to the *Events* tab to see the `FailedScheduling` error caused by the affinity conflict.
+
+=== 2. Resolution
+The VirtualMachine YAML contains a strict `podAffinity` rule forcing it to run on the exact same node as an anchor pod, effectively making it impossible to migrate to a different node.
+
+*CLI Fix:*
+1. Cancel the stuck migration:
+[source,sh,subs="attributes+"]
+----
+virtctl cancel-migration vm7 -n {user}-troubleshoot-04
+----
+2. Edit the VirtualMachine configuration:
+[source,sh,subs="attributes+"]
+----
+oc edit vm vm7 -n {user}-troubleshoot-04
+----
+3. Scroll to `spec.template.spec` and completely delete the following `affinity` block:
+[source,yaml]
+----
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: anchor
+              topologyKey: kubernetes.io/hostname
+----
+4. Save and exit the editor.
+
+*GUI Fix:*
+1. Navigate to *Virtualization -> VirtualMachines* and click `vm7`.
+2. Click the *Actions* dropdown and select *Cancel Migration*.
+3. Go to the *YAML* tab, delete the `affinity` block shown above, and click *Save*.
+
+=== 3. Verification
+Re-initiate the migration. Because the strict scheduling rules have been removed, the scheduler will successfully place the target pod on an available node.
+
+[source,sh,subs="attributes+"]
+----
+virtctl migrate vm7 -n {user}-troubleshoot-04
+oc get vmi vm7 -n {user}-troubleshoot-04
+----
+*(The migration will now progress to `Successful` and the VM will remain in a `Running` state).*

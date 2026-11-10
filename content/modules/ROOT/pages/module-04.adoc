@@ -1,4 +1,4 @@
-= Lab 4: VM Network Connectivity Troubleshooting
+= Lab 4: Live Migration and Scheduling Troubleshooting
 
 == Environment Access & Credentials
 
@@ -7,8 +7,8 @@ The OpenShift web console is available in the *OCP Console* tab on the right sid
 
 Your login is available with:
 
-* *User:* {user}
-* *Password:* {password}
+- *User:* {user}
+- *Password:* {password}
 
 To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
 
@@ -19,70 +19,87 @@ oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 
 == Overview & Objectives
 
-A virtual machine is running but cannot communicate with external systems or other cluster resources. By the end of this module, you will:
+This lab focuses on diagnosing and resolving Virtual Machine Live Migration failures in OpenShift Virtualization. By the end of this module, you will:
 
-* Inspect the interfaces and networks attached to a running VMI.
-* Validate Multus NetworkAttachmentDefinitions and the NMState bridge behind them.
-* Identify network isolation caused by restrictive NetworkPolicies.
-* Trace the packet path from the guest interface to the bridge to the physical network to isolate where connectivity breaks.
+- Understand how namespace `ResourceQuotas` impact the temporary target pods required for Live Migration.
+- Use delegated RBAC roles to perform tenant-level remediation of resource limits.
+- Troubleshoot stuck migrations caused by strict Kubernetes Pod Affinity and scheduling rules.
 
 [NOTE]
 ====
-We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issue on your own first -- that is where the best learning happens!
+This lab is designed to give you hands-on experience with real-world scenarios. We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issues on your own first—that is where the best learning happens! 
+
+If you get stuck or want to verify your findings, the companion *Guided Solution* is always available to help guide you through the next steps.
 ====
 
 == Tasks
 
-=== Task 1: Troubleshooting VM Connectivity
+=== Task 1: Troubleshooting Quota-Blocked Migrations (The Silent Failure)
 
 ==== Problem Scenario
-// TODO: replace <vm-name> with the broken VM deployed for this lab by the environment automation.
-A Virtual Machine named `<vm-name>` is running in the namespace `{user}-troubleshoot-04`, but it cannot reach its gateway or the target service it depends on.
+A Virtual Machine named `vm6` is deployed in the namespace `{user}-troubleshoot-04`. The VM appears completely healthy and ready. However, when an administrator attempts to Live Migrate it, the migration gets stuck and never completes. 
 
-Run the following command to verify that the VM is running:
-[source,sh,subs="attributes+"]
-----
-oc get vmi <vm-name> -n {user}-troubleshoot-04
-----
+Your tenant user has been granted a custom RBAC role (`quota-admin`) to manage resource limits in this specific namespace.
+
+==== Reference Documentation & Setup
+- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/live_migration#virt-about-live-migration[About live migration^] to understand the temporary pod requirements.
+- Review Kubernetes documentation on link:https://kubernetes.io/docs/concepts/policy/resource-quotas/[Resource Quotas^].
 
 ==== Goal
-Confirm the connectivity failure from inside the VM, find which layer of the network chain is broken (VM network binding, NetworkAttachmentDefinition, NMState bridge, or NetworkPolicy), fix it, and verify that the VM can reach the target again.
+Investigate the namespace events to determine exactly why the Live Migration is failing to progress. Using your delegated `quota-admin` permissions, resolve the underlying cluster configuration issue so that the pending migration automatically resumes and successfully completes.
+
+=== Task 2: Troubleshooting Scheduling Conflicts (The Stuck Target Pod)
+
+*Note: You must successfully complete Task 1 and resolve the namespace `ResourceQuota` issue before attempting this task. If the quota is not removed, this VM's migration will also be blocked by the quota, hiding the scheduling error.*
+
+==== Problem Scenario
+A Virtual Machine named `vm7` is deployed in namespace `{user}-troubleshoot-04`. A developer applied strict Pod Affinity rules to keep the VM on the same node as a specific anchor pod. 
+
+When an administrator attempts to Live Migrate the VM, the UI accepts the command, but the migration gets permanently stuck in a `Migrating` state.
+
+==== Reference Documentation & Setup
+- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/nodes/scheduling-pods-using-affinity-anti-affinity[Scheduling pods using affinity and anti-affinity^].
+
+==== Goal
+Attempt to Live Migrate `vm7` and identify the stuck target pod. Investigate the Kubernetes scheduler events to understand the pod affinity conflict preventing the migration. Modify the VirtualMachine configuration to remove the strict scheduling constraints, then re-initiate and successfully complete the Live Migration.
 
 == Suggested Troubleshooting Reference Workflow
 
-Remember that VM networking is a chain: *guest interface -> NAD -> NMState bridge -> physical NIC*. Work through it in order.
+Use the following commands to navigate the cluster objects, inspect namespace events, and verify scheduling constraints.
 
-Confirm the failure from inside the VM (for example with `ping` or `curl` against the gateway or target service):
+Check the high-level VM and VMI states in your namespace:
 [source,sh,subs="attributes+"]
 ----
-virtctl console <vm-name> -n {user}-troubleshoot-04
+oc get vm -n {user}-troubleshoot-04
+oc get vmi -n {user}-troubleshoot-04
 ----
 
-Inspect the VMI interfaces and attached networks (see `spec.networks` and `status.interfaces`):
+Identify the underlying virt-launcher pods (look for target migration pods stuck in a Pending state):
 [source,sh,subs="attributes+"]
 ----
-oc describe vmi <vm-name> -n {user}-troubleshoot-04
+oc get pods -n {user}-troubleshoot-04
 ----
 
-Inspect the NetworkAttachmentDefinitions:
+Query the namespace events to uncover silent API rejections (crucial for finding quota blocks):
 [source,sh,subs="attributes+"]
 ----
-oc get network-attachment-definitions -n {user}-troubleshoot-04
-oc describe network-attachment-definitions <nad-name> -n {user}-troubleshoot-04
+oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp'
 ----
 
-Validate the node network configuration and confirm the bridge exists and is attached to the correct NIC:
-[source,sh]
-----
-oc get nncp,nnce
-oc describe nncp <policy-name>
-----
-
-NetworkPolicies silently drop traffic, so always check them when a VM can't reach a target:
+Inspect the ResourceQuotas applied to your namespace:
 [source,sh,subs="attributes+"]
 ----
-oc get networkpolicy -n {user}-troubleshoot-04
-oc describe networkpolicy <policy-name> -n {user}-troubleshoot-04
+oc get resourcequota -n {user}-troubleshoot-04
 ----
 
-Typical faults to look for: an incorrect network binding, a broken NAD, an NMState bridge issue (missing bridge, wrong NIC, wrong VLAN), or a restrictive NetworkPolicy.
+Describe a specific stuck virt-launcher pod to uncover scheduling conflicts (replace `<virt-launcher-pod>` with the target pod name):
+[source,sh,subs="attributes+"]
+----
+oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-04
+----
+
+Review and edit the VM configuration to fix affinity and scheduling errors:
+[source,sh,subs="attributes+"]
+----
+oc edit vm vm7 -n {user}-troubleshoot-04
+----
