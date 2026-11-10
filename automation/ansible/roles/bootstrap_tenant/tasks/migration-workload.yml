@@ -30,6 +30,41 @@
         name: quota-admin
         apiGroup: rbac.authorization.k8s.io
 
+- name: Create migration-admin Role
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: migration-admin
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-04"
+      rules:
+        - apiGroups: ["subresources.kubevirt.io"]
+          resources: ["virtualmachines/migrate"]
+          verbs: ["update"]
+        - apiGroups: ["kubevirt.io"]
+          resources: ["virtualmachineinstancemigrations"]
+          verbs: ["create", "get", "list", "watch", "delete"]
+
+- name: Create migration-admin RoleBinding
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: migration-admin-binding
+        namespace: "{{ bootstrap_tenant_username }}-troubleshoot-04"
+      subjects:
+        - kind: User
+          name: "{{ bootstrap_tenant_username }}"
+          apiGroup: rbac.authorization.k8s.io
+      roleRef:
+        kind: Role
+        name: migration-admin
+        apiGroup: rbac.authorization.k8s.io
+
 - name: Create restrictive ResourceQuota (Quota Fault)
   kubernetes.core.k8s:
     state: present
