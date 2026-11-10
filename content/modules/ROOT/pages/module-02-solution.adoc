@@ -1,5 +1,22 @@
 = Lab 2: VM Network Troubleshooting - Solution Guide
 
+== Environment Access & Credentials
+
+=== Credentials for the OpenShift Console
+The OpenShift web console is available in the *OCP Console* tab on the right side of this screen. To open it in a separate browser tab instead, click {openshift_console_url}[here^].
+
+Your login is available with:
+
+- *User:* {user}
+- *Password:* {password}
+
+To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
+
+[source,sh,subs="attributes+"]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
 == Task 1 Solution: CNI and Network Attachment (Layer 2 Fault)
 
 === Step 1: Identify the CNI Failure

@@ -8,6 +8,7 @@ asciidoc:
   attributes:
     experimental: true
     page-pagination: true
+    lab_name: 'OpenShift Virtualization Troubleshooting'
     guid: '%GUID%'
     openshift_api_url: 'https://api.cluster-%GUID%.example.com:6443'
     openshift_cluster_ingress_domain: 'apps.cluster-%GUID%.example.com'
