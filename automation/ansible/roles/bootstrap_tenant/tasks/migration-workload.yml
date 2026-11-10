@@ -60,12 +60,12 @@
             image: registry.access.redhat.com/ubi9/ubi-minimal
             command: ["sleep", "infinity"]
 
-- name: Deploy vm5 (Quota Migration Fault)
+- name: Deploy vm6 (Quota Migration Fault)
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('template', 'vm5-quota-fault.yaml.j2') }}"
+    definition: "{{ lookup('template', 'vm6-quota-fault.yaml.j2') }}"
 
-- name: Deploy vm6 (Affinity Migration Fault)
+- name: Deploy vm7 (Affinity Migration Fault)
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('template', 'vm6-affinity-fault.yaml.j2') }}"
+    definition: "{{ lookup('template', 'vm7-affinity-fault.yaml.j2') }}"
