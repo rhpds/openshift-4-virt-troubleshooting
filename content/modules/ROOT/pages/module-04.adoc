@@ -37,7 +37,7 @@ If you get stuck or want to verify your findings, the companion *Guided Solution
 === Task 1: Troubleshooting Quota-Blocked Migrations (The Silent Failure)
 
 ==== Problem Scenario
-A Virtual Machine named `vm6` is deployed in the namespace `{user}-troubleshoot-04`. The VM appears completely healthy and ready. However, when an administrator attempts to Live Migrate it, the migration gets stuck and never completes. 
+A Virtual Machine named `vm6` is deployed in the namespace `{user}-troubleshoot-04`. The VM appears completely healthy and ready. However, when you attempt to Live Migrate it, the migration gets stuck and never completes.
 
 Your tenant user has been granted a custom RBAC role (`quota-admin`) to manage resource limits in this specific namespace.
 
@@ -50,12 +50,14 @@ Investigate the namespace events to determine exactly why the Live Migration is 
 
 === Task 2: Troubleshooting Scheduling Conflicts (The Stuck Target Pod)
 
-*Note: You must successfully complete Task 1 and resolve the namespace `ResourceQuota` issue before attempting this task. If the quota is not removed, this VM's migration will also be blocked by the quota, hiding the scheduling error.*
+*Note: You must successfully complete Task 1 and resolve the namespace `ResourceQuota` issue before attempting this task. While the quota exists it blocks `vm7`'s initial virt-launcher pod, so `vm7` cannot start at all and there is no migration to troubleshoot.*
 
 ==== Problem Scenario
-A Virtual Machine named `vm7` is deployed in namespace `{user}-troubleshoot-04`. A developer applied strict Pod Affinity rules to keep the VM on the same node as a specific anchor pod. 
+A Virtual Machine named `vm7` is deployed in namespace `{user}-troubleshoot-04`. A developer applied strict Pod Affinity rules to keep the VM on the same node as a specific anchor pod.
 
-When an administrator attempts to Live Migrate the VM, the UI accepts the command, but the migration gets permanently stuck in a `Migrating` state.
+Because the `migration-quota` from Task 1 also blocks this VM's first virt-launcher pod, `vm7` remains in `Starting` until the quota is removed. The VMI exists but stays `Pending`, and no virt-launcher pod is created because quota admission rejects it. After completing Task 1, confirm `vm7` is `Running`. If it is still `Starting`, restart it with `virtctl restart vm7 -n {user}-troubleshoot-04` and wait for it to reach `Running`.
+
+When you attempt to Live Migrate the running VM, the UI accepts the command, but the migration gets permanently stuck in a `Migrating` state.
 
 ==== Reference Documentation & Setup
 - Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/nodes/scheduling-pods-using-affinity-anti-affinity[Scheduling pods using affinity and anti-affinity^].
@@ -67,11 +69,23 @@ Attempt to Live Migrate `vm7` and identify the stuck target pod. Investigate the
 
 Use the following commands to navigate the cluster objects, inspect namespace events, and verify scheduling constraints.
 
+Start a live migration (replace `<vm-name>` with `vm6` or `vm7`):
+[source,sh,subs="attributes+"]
+----
+virtctl migrate <vm-name> -n {user}-troubleshoot-04
+----
+
 Check the high-level VM and VMI states in your namespace:
 [source,sh,subs="attributes+"]
 ----
 oc get vm -n {user}-troubleshoot-04
 oc get vmi -n {user}-troubleshoot-04
+----
+
+Check the live migration objects:
+[source,sh,subs="attributes+"]
+----
+oc get vmim -n {user}-troubleshoot-04
 ----
 
 Identify the underlying virt-launcher pods (look for target migration pods stuck in a Pending state):
@@ -83,7 +97,7 @@ oc get pods -n {user}-troubleshoot-04
 Query the namespace events to uncover silent API rejections (crucial for finding quota blocks):
 [source,sh,subs="attributes+"]
 ----
-oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp'
+oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp' | grep -i -E 'FailedCreate|quota'
 ----
 
 Inspect the ResourceQuotas applied to your namespace:
