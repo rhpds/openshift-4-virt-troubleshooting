@@ -52,7 +52,7 @@ spec:
   - id: module-04
     title: Network Troubleshooting
     duration_min: 25
-    status: not_started
+    status: complete
   - id: module-05
     title: Guest Agent Failures
     duration_min: 20
