@@ -1,15 +1,456 @@
 ---
-# HEALTHCHECK — Quick environment readiness check
-# Runs post-provisioning to verify the lab environment is functional.
-# Should complete in under 60 seconds.
-#
+# Read-only health check for a fresh LB1898 environment.
 # Exit 0 = healthy, non-zero = unhealthy.
+#
+# Scope is the services this lab provisions: the shared infrastructure from the
+# cluster catalog item, and the tenant workload from the tenant item. It checks
+# that the environment a learner needs is present and running, not how each VM
+# is broken - that belongs in e2e, and asserting it here would turn the check
+# red as soon as a learner started working.
+#
+#   curl -sk -N "$SHOWROOM_URL/stream/qa/healthcheck"
+#
+# Checks this tenant only, to stay under 60 seconds. To check every tenant:
+#   -e hc_all_tenants=true
+#
+# The runner ServiceAccount needs cluster-scoped reads. In the tenant AgnosticV item:
+#   ocp4_workload_showroom_runtime_automation_cluster_admin: true
+#   ocp4_workload_showroom_runtime_automation_cluster_role: cluster-reader
 
-- name: "Environment Health Check"
+- name: Environment health check
   hosts: localhost
   connection: local
   gather_facts: false
+  module_defaults:
+    group/kubernetes.core.k8s:
+      kubeconfig: "{{ k8s_kubeconfig | default(omit) }}"
+  vars:
+    failures: []
+    expected_vms: [vm1, vm2, vm3, vm4, vm5, vm6, vm7]
+    # vm5 and vm6 boot normally; their faults only appear later, inside the guest
+    # and on migration. The other five are not expected to reach Running, and one
+    # that does means its fault is no longer reproducing.
+    expected_running: [vm5, vm6]
+
   tasks:
-    - name: "TODO: Implement health checks"
+
+    # ------------------------------------------------------------------
+    # Precondition
+    # ------------------------------------------------------------------
+
+    - name: Get namespaces
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+      register: namespaces
+      failed_when: false
+
+    - name: Fail early if cluster-scoped reads are not allowed
+      ansible.builtin.assert:
+        that: namespaces.resources | default([]) | length > 0
+        fail_msg: >-
+          Cannot list namespaces, so every check below would be a false failure.
+          Either the cluster is unreachable, or the runtime-automation ServiceAccount
+          has no cluster-scoped reads - that needs
+          ocp4_workload_showroom_runtime_automation_cluster_admin: true and
+          ocp4_workload_showroom_runtime_automation_cluster_role: cluster-reader
+          on the tenant item (lb1898-ocp-virt-troubleshooting-tenant/common.yaml)
+          in AgnosticV.
+        success_msg: Cluster-scoped read access confirmed.
+
+    # ------------------------------------------------------------------
+    # Cluster scope: shared infrastructure from the cluster catalog item
+    # ------------------------------------------------------------------
+
+    - name: Get operators
+      kubernetes.core.k8s_info:
+        api_version: operators.coreos.com/v1alpha1
+        kind: ClusterServiceVersion
+        label_selectors:
+          # OLM copies every CSV into every namespace; without this it returns 700+.
+          - "!olm.copiedFrom"
+      register: operators
+      failed_when: false
+
+    - name: Fail when no operators were found
+      ansible.builtin.set_fact:
+        failures: "{{ failures + ['operators: no ClusterServiceVersions returned, so operator health could not be checked'] }}"
+      when: operators.resources | default([]) | length == 0
+
+    - name: Fail when an operator did not install
+      vars:
+        broken: >-
+          {{ operators.resources | default([]) | rejectattr('status.phase', 'equalto', 'Succeeded')
+             | map(attribute='metadata.name') | list }}
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['operators: ' ~ broken | join(', ')
+             ~ ' did not reach Succeeded, so the features they provide are unavailable'] }}
+      when: broken | length > 0
+
+    - name: Get OpenShift Virtualization
+      kubernetes.core.k8s_info:
+        # This cluster serves HyperConverged only as v1beta1; v1 returns nothing.
+        api_version: hco.kubevirt.io/v1beta1
+        kind: HyperConverged
+        name: kubevirt-hyperconverged
+        namespace: openshift-cnv
+      register: hyperconverged
+      failed_when: false
+
+    - name: Fail when OpenShift Virtualization is not Available
+      vars:
+        hco: "{{ hyperconverged.resources | default([]) | first | default({}, true) }}"
+      ansible.builtin.set_fact:
+        failures: "{{ failures + ['virtualization: HyperConverged kubevirt-hyperconverged is missing or not Available, so no VM can run'] }}"
+      when: >-
+        (hco.status | default({}, true)).conditions | default([], true)
+        | selectattr('type', 'equalto', 'Available')
+        | selectattr('status', 'equalto', 'True') | list | length == 0
+
+    - name: Get the secondary network bridge policy
+      kubernetes.core.k8s_info:
+        api_version: nmstate.io/v1
+        kind: NodeNetworkConfigurationPolicy
+        name: br0-policy
+      register: bridge_policy
+      failed_when: false
+
+    - name: Fail when the secondary network bridge did not apply
+      vars:
+        nncp: "{{ bridge_policy.resources | default([]) | first | default({}, true) }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['networking: NodeNetworkConfigurationPolicy br0-policy is missing or not Available,'
+             ~ ' so the br0 bridge does not exist on the workers and module 2 VMs cannot attach to it'] }}
+      when: >-
+        (nncp.status | default({}, true)).conditions | default([], true)
+        | selectattr('type', 'equalto', 'Available')
+        | selectattr('status', 'equalto', 'True') | list | length == 0
+
+    - name: Get the fedora boot image
+      kubernetes.core.k8s_info:
+        api_version: cdi.kubevirt.io/v1beta1
+        kind: DataSource
+        name: fedora
+        namespace: openshift-virtualization-os-images
+      register: fedora_image
+      failed_when: false
+
+    # Only fedora: vm2 and vm3 clone from it and the other VMs use container disks.
+    # The cluster ships many more DataSources that are legitimately not Ready.
+    - name: Fail when the fedora boot image is not Ready
+      vars:
+        image: "{{ fedora_image.resources | default([]) | first | default({}, true) }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['boot image: DataSource fedora in openshift-virtualization-os-images is missing or not Ready,'
+             ~ ' so vm2 and vm3 cannot clone their root disks'] }}
+      when: >-
+        (image.status | default({}, true)).conditions | default([], true)
+        | selectattr('type', 'equalto', 'Ready')
+        | selectattr('status', 'equalto', 'True') | list | length == 0
+
+    - name: Get the bootstrap-infra Application
+      kubernetes.core.k8s_info:
+        api_version: argoproj.io/v1alpha1
+        kind: Application
+        name: bootstrap-infra
+        namespace: openshift-gitops
+      register: bootstrap_infra
+      failed_when: false
+
+    - name: Fail when bootstrap-infra is not Synced and Healthy
+      vars:
+        app: "{{ bootstrap_infra.resources | default([]) | first | default({}, true) }}"
+        sync: "{{ ((app.status | default({}, true)).sync | default({}, true)).status | default('missing', true) }}"
+        health: "{{ ((app.status | default({}, true)).health | default({}, true)).status | default('missing', true) }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['gitops: Application bootstrap-infra is ' ~ sync ~ '/' ~ health
+             ~ ' instead of Synced/Healthy, so the bridge policy, CPU-manager KubeletConfig'
+             ~ ' and Quay image sync may be missing or out of date'] }}
+      when: sync != 'Synced' or health != 'Healthy'
+
+    - name: Get the Quay registry
+      kubernetes.core.k8s_info:
+        api_version: quay.redhat.com/v1
+        kind: QuayRegistry
+        name: quay
+        namespace: quay
+      register: quay_registry
+      failed_when: false
+
+    - name: Fail when Quay is not Available
+      vars:
+        quay: "{{ quay_registry.resources | default([]) | first | default({}, true) }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['registry: QuayRegistry quay is missing or not Available,'
+             ~ ' so vm1 cannot pull its image and the module 1 exercise will not behave as written'] }}
+      when: >-
+        (quay.status | default({}, true)).conditions | default([], true)
+        | selectattr('type', 'equalto', 'Available')
+        | selectattr('status', 'equalto', 'True') | list | length == 0
+
+    - name: Get the worker MachineConfigPool
+      kubernetes.core.k8s_info:
+        api_version: machineconfiguration.openshift.io/v1
+        kind: MachineConfigPool
+        name: worker
+      register: worker_pool
+      failed_when: false
+
+    - name: Fail when the worker pool is not Updated
+      vars:
+        pool: "{{ worker_pool.resources | default([]) | first | default({}, true) }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['nodes: MachineConfigPool worker is missing or not Updated, so the static CPU-manager'
+             ~ ' KubeletConfig is still rolling out and workers may be rebooting under the lab'] }}
+      when: >-
+        (pool.status | default({}, true)).conditions | default([], true)
+        | selectattr('type', 'equalto', 'Updated')
+        | selectattr('status', 'equalto', 'True') | list | length == 0
+
+    - name: Fail when the worker pool is Degraded
+      vars:
+        pool: "{{ worker_pool.resources | default([]) | first | default({}, true) }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['nodes: MachineConfigPool worker is Degraded, so the static CPU-manager'
+             ~ ' KubeletConfig may not have applied and module 1 will not behave as written'] }}
+      when: >-
+        (pool.status | default({}, true)).conditions | default([], true)
+        | selectattr('type', 'equalto', 'Degraded')
+        | selectattr('status', 'equalto', 'True') | list | length > 0
+
+    # ------------------------------------------------------------------
+    # Tenant scope: this user's own tenant (every tenant with hc_all_tenants=true)
+    # ------------------------------------------------------------------
+
+    - name: Read the tenant identity
+      ansible.builtin.slurp:
+        src: /user_data/user_data.yml
+      register: user_data_file
+      failed_when: false
+
+    - name: Read the Showroom namespace
+      ansible.builtin.slurp:
+        src: /var/run/secrets/kubernetes.io/serviceaccount/namespace
+      register: showroom_namespace
+      failed_when: false
+
+    - name: Parse the tenant identity
+      ansible.builtin.set_fact:
+        user_data: "{{ user_data_file.content | default('e30=') | b64decode | from_yaml | default({}, true) }}"
+
+    - name: Work out which tenants to check
+      vars:
+        own_user: >-
+          {{ user_data.user | default(showroom_namespace.content | default('') | b64decode | trim
+             | regex_replace('-showroom$', ''), true) }}
+      ansible.builtin.set_fact:
+        tenants: >-
+          {{ (namespaces.resources | map(attribute='metadata.name')
+              | select('match', '.+-troubleshoot-01$')
+              | map('regex_replace', '-troubleshoot-01$', '') | list)
+             if hc_all_tenants | default(false) | bool
+             else ([own_user] | reject('equalto', '') | list) }}
+
+    - name: Fail when no tenant could be identified
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant: no user found in /user_data/user_data.yml or the Showroom namespace,'
+             ~ ' so no tenant resources were checked'] }}
+      when: tenants | length == 0
+
+    - name: Report which tenants are checked
       ansible.builtin.debug:
-        msg: "Replace this task with checks that verify the environment is ready"
+        msg: "Checking {{ tenants | length }} tenant(s): {{ tenants | join(', ') }}"
+
+    - name: Get the lab VMs
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        label_selectors:
+          # bootstrap_tenant labels every VM it deploys with this.
+          - app.kubernetes.io/part-of=virt-troubleshooting
+      register: vms
+      failed_when: false
+
+    - name: Get the network attachment definitions
+      kubernetes.core.k8s_info:
+        api_version: k8s.cni.cncf.io/v1
+        kind: NetworkAttachmentDefinition
+      register: nads
+      failed_when: false
+
+    - name: Get the migration quota
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ResourceQuota
+        field_selectors:
+          - metadata.name=migration-quota
+      register: quotas
+      failed_when: false
+
+    - name: Get the anchor pod
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        label_selectors:
+          - app=anchor
+      register: anchor_pods
+      failed_when: false
+
+    - name: Get the lab guide pods
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        label_selectors:
+          - app.kubernetes.io/name=showroom
+      register: showroom_pods
+      failed_when: false
+
+    - name: Fail when a tenant namespace is missing or not Active
+      vars:
+        ns: "{{ item.0 }}-troubleshoot-{{ item.1 }}"
+        phase: >-
+          {{ ((namespaces.resources | default([]) | selectattr('metadata.name', 'equalto', ns)
+               | first | default({}, true)).status | default({}, true)).phase | default('missing', true) }}
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item.0 ~ ': namespace ' ~ ns ~ ' is ' ~ phase
+             ~ ', so its lab exercises have nowhere to run'] }}
+      loop: "{{ tenants | product(['01', '02', '03', '04', '05']) | list }}"
+      when: phase != 'Active'
+
+    - name: Fail when a lab VM is missing
+      vars:
+        found: >-
+          {{ vms.resources | default([]) | selectattr('metadata.namespace', 'match', '^' ~ item ~ '-troubleshoot-')
+             | map(attribute='metadata.name') | list }}
+        missing: "{{ expected_vms | difference(found) | sort }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': VirtualMachine ' ~ missing | join(', ')
+             ~ ' missing, so those exercises cannot be run'] }}
+      loop: "{{ tenants }}"
+      when: missing | length > 0
+
+    # Only printableStatus is asserted. The specific failure reason is deliberately
+    # not checked: it varies with timing on a healthy environment - vm4 was seen as
+    # both Starting and CrashLoopBackOff an hour apart.
+    - name: Fail when a VM that should be running is not
+      vars:
+        mine: "{{ vms.resources | default([]) | selectattr('metadata.namespace', 'match', '^' ~ item ~ '-troubleshoot-') | list }}"
+        stopped: >-
+          {{ dict(mine | map(attribute='metadata.name')
+             | zip(mine | map(attribute='status.printableStatus', default='unknown')))
+             | dict2items | selectattr('key', 'in', expected_running)
+             | rejectattr('value', 'equalto', 'Running') | map(attribute='key') | list }}
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': ' ~ stopped | join(', ')
+             ~ ' should be Running but is not, so the lab does not start from a working baseline'] }}
+      loop: "{{ tenants }}"
+      when: stopped | length > 0
+
+    - name: Fail when a VM that should be broken is running
+      vars:
+        mine: "{{ vms.resources | default([]) | selectattr('metadata.namespace', 'match', '^' ~ item ~ '-troubleshoot-') | list }}"
+        healthy: >-
+          {{ dict(mine | map(attribute='metadata.name')
+             | zip(mine | map(attribute='status.printableStatus', default='unknown')))
+             | dict2items | rejectattr('key', 'in', expected_running)
+             | selectattr('value', 'equalto', 'Running') | map(attribute='key') | list }}
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': ' ~ healthy | join(', ')
+             ~ ' is Running when it should not be, so there is nothing to troubleshoot'] }}
+      loop: "{{ tenants }}"
+      when: healthy | length > 0
+
+    - name: Fail when a network attachment definition is missing
+      vars:
+        found: >-
+          {{ nads.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-troubleshoot-02')
+             | map(attribute='metadata.name') | list }}
+        missing: "{{ ['vm-private-net', 'healthy-flat-net'] | difference(found) | sort }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': NetworkAttachmentDefinition ' ~ missing | join(', ')
+             ~ ' missing from ' ~ item ~ '-troubleshoot-02, so the module 2 exercise is not set up'] }}
+      loop: "{{ tenants }}"
+      when: missing | length > 0
+
+    - name: Fail when the migration quota is missing
+      vars:
+        found: "{{ quotas.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-troubleshoot-04') | list }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': ResourceQuota migration-quota is missing from '
+             ~ item ~ '-troubleshoot-04, so the module 4 exercise is not set up'] }}
+      loop: "{{ tenants }}"
+      when: found | length == 0
+
+    - name: Fail when anchor-pod is missing
+      vars:
+        found: "{{ anchor_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-troubleshoot-04') | list }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': Pod anchor-pod is missing from ' ~ item
+             ~ '-troubleshoot-04, so vm7 has nothing to be pinned to and the module 4 exercise is not set up'] }}
+      loop: "{{ tenants }}"
+      when: found | length == 0
+
+    - name: Fail when a tenant has no lab guide pod
+      vars:
+        pods: "{{ showroom_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-showroom') | list }}"
+      ansible.builtin.set_fact:
+        failures: "{{ failures + ['tenant ' ~ item ~ ': no Showroom pod in ' ~ item ~ '-showroom, so there is no lab guide or terminal'] }}"
+      loop: "{{ tenants }}"
+      when: pods | length == 0
+
+    - name: Fail when the lab guide pod is not Running
+      vars:
+        pods: "{{ showroom_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-showroom') | list }}"
+        stuck: "{{ pods | map(attribute='status.phase', default='unknown') | reject('equalto', 'Running') | list }}"
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': Showroom pod is ' ~ stuck | join(', ')
+             ~ ' instead of Running, so the lab guide and terminal are unavailable'] }}
+      loop: "{{ tenants }}"
+      when: stuck | length > 0
+
+    - name: Fail when a lab guide container is not ready
+      vars:
+        pods: "{{ showroom_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-showroom') | list }}"
+        unready: >-
+          {{ pods | map(attribute='status.containerStatuses', default=[]) | flatten
+             | rejectattr('ready') | map(attribute='name') | list }}
+      ansible.builtin.set_fact:
+        failures: >-
+          {{ failures + ['tenant ' ~ item ~ ': Showroom containers not ready (' ~ unready | unique | join(', ')
+             ~ '), so parts of the lab guide or terminal are broken'] }}
+      loop: "{{ tenants }}"
+      when: unready | length > 0
+
+    # ------------------------------------------------------------------
+    # Report
+    # ------------------------------------------------------------------
+
+    - name: Report healthy
+      ansible.builtin.debug:
+        msg: "Healthy. Shared cluster infrastructure is up and {{ tenants | length }} tenant(s) have their lab workload in place."
+      when: failures | length == 0
+
+    - name: Report unhealthy
+      ansible.builtin.fail:
+        msg: |
+          Health check failed with {{ failures | length }} issue(s):
+          {% for f in failures %}
+            {{ loop.index }}. {{ f }}
+          {% endfor %}
+      when: failures | length > 0

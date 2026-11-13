@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   name: vm1
   namespace: {{ bootstrap_tenant_username }}-troubleshoot-01
+  labels:
+    app.kubernetes.io/part-of: virt-troubleshooting
 spec:
   runStrategy: Always
   template:

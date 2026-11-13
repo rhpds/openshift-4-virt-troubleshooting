@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   name: vm5
   namespace: {{ bootstrap_tenant_username }}-troubleshoot-03
+  labels:
+    app.kubernetes.io/part-of: virt-troubleshooting
 spec:
   running: true
   template:

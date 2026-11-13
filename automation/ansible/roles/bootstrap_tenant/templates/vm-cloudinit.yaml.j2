@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   name: vm2
   namespace: {{ bootstrap_tenant_username }}-troubleshoot-01
+  labels:
+    app.kubernetes.io/part-of: virt-troubleshooting
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1
