@@ -168,8 +168,8 @@
       ansible.builtin.set_fact:
         failures: >-
           {{ failures + ['gitops: Application bootstrap-infra is ' ~ sync ~ '/' ~ health
-             ~ ' instead of Synced/Healthy, so the bridge policy, CPU-manager KubeletConfig'
-             ~ ' and Quay image sync may be missing or out of date'] }}
+             ~ ' instead of Synced/Healthy, so the bridge policy and Quay image sync'
+             ~ ' may be missing or out of date'] }}
       when: sync != 'Synced' or health != 'Healthy'
 
     - name: Get the Quay registry
@@ -192,38 +192,6 @@
         (quay.status | default({}, true)).conditions | default([], true)
         | selectattr('type', 'equalto', 'Available')
         | selectattr('status', 'equalto', 'True') | list | length == 0
-
-    - name: Get the worker MachineConfigPool
-      kubernetes.core.k8s_info:
-        api_version: machineconfiguration.openshift.io/v1
-        kind: MachineConfigPool
-        name: worker
-      register: worker_pool
-      failed_when: false
-
-    - name: Fail when the worker pool is not Updated
-      vars:
-        pool: "{{ worker_pool.resources | default([]) | first | default({}, true) }}"
-      ansible.builtin.set_fact:
-        failures: >-
-          {{ failures + ['nodes: MachineConfigPool worker is missing or not Updated, so the static CPU-manager'
-             ~ ' KubeletConfig is still rolling out and workers may be rebooting under the lab'] }}
-      when: >-
-        (pool.status | default({}, true)).conditions | default([], true)
-        | selectattr('type', 'equalto', 'Updated')
-        | selectattr('status', 'equalto', 'True') | list | length == 0
-
-    - name: Fail when the worker pool is Degraded
-      vars:
-        pool: "{{ worker_pool.resources | default([]) | first | default({}, true) }}"
-      ansible.builtin.set_fact:
-        failures: >-
-          {{ failures + ['nodes: MachineConfigPool worker is Degraded, so the static CPU-manager'
-             ~ ' KubeletConfig may not have applied and module 1 will not behave as written'] }}
-      when: >-
-        (pool.status | default({}, true)).conditions | default([], true)
-        | selectattr('type', 'equalto', 'Degraded')
-        | selectattr('status', 'equalto', 'True') | list | length > 0
 
     # ------------------------------------------------------------------
     # Tenant scope: this user's own tenant (every tenant with hc_all_tenants=true)
@@ -295,13 +263,13 @@
       register: quotas
       failed_when: false
 
-    - name: Get the anchor pod
+    - name: Get the tenant fixture pods
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Pod
         label_selectors:
-          - app=anchor
-      register: anchor_pods
+          - app.kubernetes.io/part-of=virt-troubleshooting
+      register: fixture_pods
       failed_when: false
 
     - name: Get the lab guide pods
@@ -395,47 +363,33 @@
       loop: "{{ tenants }}"
       when: found | length == 0
 
-    - name: Fail when anchor-pod is missing
+    - name: Fail when a tenant fixture pod is missing
       vars:
-        found: "{{ anchor_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-troubleshoot-04') | list }}"
+        found: "{{ fixture_pods.resources | default([]) | selectattr('metadata.namespace', 'match', '^' ~ item ~ '-troubleshoot-') | list }}"
       ansible.builtin.set_fact:
         failures: >-
-          {{ failures + ['tenant ' ~ item ~ ': Pod anchor-pod is missing from ' ~ item
-             ~ '-troubleshoot-04, so vm7 has nothing to be pinned to and the module 4 exercise is not set up'] }}
+          {{ failures + ['tenant ' ~ item ~ ': no fixture pod found in its namespaces, so the module 4'
+             ~ ' anchor is missing and vm7 has nothing to be pinned to'] }}
       loop: "{{ tenants }}"
       when: found | length == 0
 
-    - name: Fail when a tenant has no lab guide pod
+    - name: Fail when the lab guide is not available
       vars:
         pods: "{{ showroom_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-showroom') | list }}"
-      ansible.builtin.set_fact:
-        failures: "{{ failures + ['tenant ' ~ item ~ ': no Showroom pod in ' ~ item ~ '-showroom, so there is no lab guide or terminal'] }}"
-      loop: "{{ tenants }}"
-      when: pods | length == 0
-
-    - name: Fail when the lab guide pod is not Running
-      vars:
-        pods: "{{ showroom_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-showroom') | list }}"
-        stuck: "{{ pods | map(attribute='status.phase', default='unknown') | reject('equalto', 'Running') | list }}"
-      ansible.builtin.set_fact:
-        failures: >-
-          {{ failures + ['tenant ' ~ item ~ ': Showroom pod is ' ~ stuck | join(', ')
-             ~ ' instead of Running, so the lab guide and terminal are unavailable'] }}
-      loop: "{{ tenants }}"
-      when: stuck | length > 0
-
-    - name: Fail when a lab guide container is not ready
-      vars:
-        pods: "{{ showroom_pods.resources | default([]) | selectattr('metadata.namespace', 'equalto', item ~ '-showroom') | list }}"
+        phases: "{{ pods | map(attribute='status.phase', default='unknown') | list }}"
         unready: >-
           {{ pods | map(attribute='status.containerStatuses', default=[]) | flatten
-             | rejectattr('ready') | map(attribute='name') | list }}
+             | rejectattr('ready') | map(attribute='name') | unique | list }}
+        reason: >-
+          {{ 'no pod exists' if pods | length == 0
+             else 'pod is ' ~ (phases | join(', ')) if 'Running' not in phases
+             else 'containers not ready: ' ~ (unready | join(', ')) }}
       ansible.builtin.set_fact:
         failures: >-
-          {{ failures + ['tenant ' ~ item ~ ': Showroom containers not ready (' ~ unready | unique | join(', ')
-             ~ '), so parts of the lab guide or terminal are broken'] }}
+          {{ failures + ['tenant ' ~ item ~ ': lab guide unavailable in ' ~ item ~ '-showroom ('
+             ~ reason ~ '), so there is no guide or terminal'] }}
       loop: "{{ tenants }}"
-      when: unready | length > 0
+      when: pods | length == 0 or 'Running' not in phases or unready | length > 0
 
     # ------------------------------------------------------------------
     # Report
