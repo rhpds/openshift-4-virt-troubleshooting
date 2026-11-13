@@ -8,11 +8,6 @@
 - name: Grant Quay access
   ansible.builtin.include_tasks: grant_quay_access.yml
 
-- name: "Deploy broken VM scheduling failure"
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('template', 'vm-scheduling.yaml.j2') }}"
-
 - name: "Deploy broken VM image pull failure"
   kubernetes.core.k8s:
     state: present
