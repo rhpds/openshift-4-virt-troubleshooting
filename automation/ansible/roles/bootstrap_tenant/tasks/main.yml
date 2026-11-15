@@ -7,6 +7,7 @@
     - network-workload.yml
     - agent.yml
     - migration-workload.yml
+    - cdi-workload.yml
 
 - name: Running workload removal tasks
   when: ACTION | default('provision') in ['remove', 'destroy']

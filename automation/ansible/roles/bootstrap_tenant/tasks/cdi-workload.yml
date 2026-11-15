@@ -1,0 +1,6 @@
+---
+- name: "Deploy broken VM withCDI failure 1"
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm-cdi1.yaml.j2') }}"
+
