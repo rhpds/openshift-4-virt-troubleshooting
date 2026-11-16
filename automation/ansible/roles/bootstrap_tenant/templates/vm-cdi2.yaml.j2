@@ -1,0 +1,30 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm9
+  namespace: {{ bootstrap_tenant_username }}-troubleshoot-05
+spec:
+  instancetype:
+    name: u1.small
+  preference:
+    name: rhel.9
+  runStrategy: Always
+  dataVolumeTemplates:
+  - metadata:
+      name: vm-golden-rbac-fail-disk
+    spec:
+      sourceRef:
+        kind: DataSource
+        name: centos9-golden
+      storage:
+        resources:
+          requests:
+            storage: 30Gi
+  template:
+    spec:
+      domain:
+        devices: {}
+      volumes:
+      - dataVolume:
+          name: vm-golden-rbac-fail-disk
+        name: rootdisk
