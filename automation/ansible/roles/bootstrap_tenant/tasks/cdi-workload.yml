@@ -27,6 +27,25 @@
             requests:
               storage: 30Gi
 
+- name: Create CentOS Stream 9 DataSource
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataSource
+      metadata:
+        name: centos9-golden
+        namespace: openshift
+        labels:
+          instancetype.kubevirt.io/default-preference: rhel.9
+          instancetype.kubevirt.io/default-instancetype: u1.small
+      spec:
+        source:
+          pvc:
+            name: centos9-dv
+            namespace: openshift
+
+
 - name: Configure golden image cloner ClusterRole and RoleBinding
   kubernetes.core.k8s:
     state: present
