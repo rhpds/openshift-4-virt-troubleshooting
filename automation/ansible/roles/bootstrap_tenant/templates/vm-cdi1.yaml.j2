@@ -2,13 +2,12 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm8
-  namespace: {{ bootstrap_tenant_username }}-troubleshoot-05
+  namespace: "{{ bootstrap_tenant_username }}-troubleshoot-05"
 spec:
   dataVolumeTemplates:
     - apiVersion: cdi.kubevirt.io/v1beta1
       kind: DataVolume
       metadata:
-        creationTimestamp: null
         name: rhel9-dv
       spec:
         sourceRef:
@@ -26,9 +25,8 @@ spec:
         vm.kubevirt.io/flavor: small
         vm.kubevirt.io/os: rhel9
         vm.kubevirt.io/workload: server
-      creationTimestamp: null
       labels:
-        kubevirt.io/domain: rhel9-aquamarine-pig-41
+        kubevirt.io/domain: vm8
         kubevirt.io/size: small
     spec:
       architecture: amd64
@@ -46,8 +44,7 @@ spec:
                 bus: virtio
               name: cloudinitdisk
           interfaces:
-            - macAddress: '02:04:55:13:86:12'
-              masquerade: {}
+            - masquerade: {}
               model: virtio
               name: default
           rng: {}
@@ -58,8 +55,6 @@ spec:
         firmware:
           bootloader:
             efi: {}
-          serial: 8905679a-9294-4485-ba07-2490c5402101
-          uuid: e678ceed-c8a7-4c68-bb7c-f7eefe53f32b
         machine:
           type: pc-q35-rhel9.6.0
         memory:
