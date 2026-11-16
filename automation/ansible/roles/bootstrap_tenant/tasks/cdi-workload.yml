@@ -4,3 +4,63 @@
     state: present
     definition: "{{ lookup('template', 'vm-cdi1.yaml.j2') }}"
 
+
+- name: Create CentOS Stream 9 DataVolume
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: centos9-dv
+        namespace: openshift
+        annotations:
+          cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+          cdi.kubevirt.io/storage.usePopulator: "false"
+      spec:
+        source:
+          registry:
+            url: "docker://quay.io/containerdisks/centos-stream:9"
+        storage:
+          storageClassName: ocs-external-storagecluster-ceph-rbd
+          resources:
+            requests:
+              storage: 30Gi
+
+- name: Configure golden image cloner ClusterRole and RoleBinding
+  kubernetes.core.k8s:
+    state: present
+    definition: |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        name: golden-image-cloner
+      rules:
+        - apiGroups: ["cdi.kubevirt.io"]
+          resources: ["datavolumes/source"]
+          verbs: ["create"]
+        - apiGroups: ["cdi.kubevirt.io"]
+          resources: ["datasources"]
+          verbs: ["get", "list", "watch"]
+        - apiGroups: [""]
+          resources: ["persistentvolumeclaims"]
+          verbs: ["get", "list", "watch"]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: allow-all-namespaces-clone
+        namespace: openshift
+      subjects:
+        - kind: Group
+          name: system:authenticated
+          apiGroup: rbac.authorization.k8s.io
+      roleRef:
+        kind: ClusterRole
+        name: golden-image-cloner
+        apiGroup: rbac.authorization.k8s.io
+
+- name: "Deploy broken VM withCDI failure 2"
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm-cdi2.yaml.j2') }}"
