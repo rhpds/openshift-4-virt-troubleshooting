@@ -100,7 +100,7 @@ oc get vm,vmi vm8 -n {user}-troubleshoot-05
 oc get vm,dv -n {user}-troubleshoot-05
 ----
 +
-_Observation:_ `vm9` is stuck in `Provisioning`, and **no `DataVolume`** (`vm-golden-rbac-fail-disk`) has been created for `vm9`.
+_Observation:_ `vm9` reports `Stopped` (it never reaches `Provisioning` because the failure happens before any DataVolume is created), and **no `DataVolume`** (`vm-golden-rbac-fail-disk`) has been created for `vm9`.
 
 . Describe the `vm9` Virtual Machine and check namespace events to see why the DataVolume was never instantiated:
 +

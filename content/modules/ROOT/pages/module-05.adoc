@@ -63,7 +63,8 @@ vm8    20h   Provisioning   False
 ----
 
 ==== Reference Documentation & Setup
-* Consult the Red Hat documentation on link:https://redhat.com[About DataVolumes in OpenShift Virtualization^].
+* Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/storage#dv-configuration-tasks[Data volumes in OpenShift Virtualization^].
+* Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/storage#virt-enabling-user-permissions-to-clone-datavolumes[Enabling user permissions to clone data volumes across namespaces^].
 
 ==== Goal
 Investigate the DataVolume and CDI events, determine why the storage provisioning is failing, patch the Virtual Machine configuration to resolve the issue, and transition `vm8` to a `Running` state.
@@ -73,7 +74,7 @@ Investigate the DataVolume and CDI events, determine why the storage provisionin
 ==== Problem Scenario
 A Virtual Machine named `vm9` fails to provision its boot disk in the namespace `{user}-troubleshoot-05`.
 
-The VM is configured with an instance type and preference to clone a shared golden image (`centos9-golden`) in openshift namespace, but the DataVolume never completes binding or cloning.
+The VM is configured with an instance type and preference to clone a shared golden image (`centos9-golden`) in openshift namespace, but the DataVolume is never created.
 
 Run the following command to verify the current non-running state of `vm9`:
 [source,sh,subs="attributes+"]
@@ -86,8 +87,13 @@ The output should look similar to this:
 [source,texinfo]
 ----
 NAME   AGE   STATUS         READY
-vm9    20h   Provisioning   False
+vm9    20h   Stopped        False
 ----
+
+[NOTE]
+====
+Unlike `vm8`, `vm9` never enters the `Provisioning` state: the VirtualMachine controller fails before any DataVolume is created, so the VM reports `Stopped` with a `Failure` condition.
+====
 
 ==== Goal
 Inspect the DataVolume and Virtual Machine specifications, pinpoint why CDI cannot locate the source image template, update the VM definition, and restore `vm9` to a `Running` state.
