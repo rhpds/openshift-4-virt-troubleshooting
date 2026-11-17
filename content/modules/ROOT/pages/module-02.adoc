@@ -88,8 +88,8 @@ oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-02
 Inspect the custom NetworkAttachmentDefinition causing the Layer 2 fault:
 [source,sh,subs="attributes+"]
 ----
-oc get networkattachmentdefinition -n {user}-troubleshoot-02
-oc describe networkattachmentdefinition vm-private-net -n {user}-troubleshoot-02
+oc get net-attach-def -n {user}-troubleshoot-02
+oc describe net-attach-def vm-private-net -n {user}-troubleshoot-02
 ----
 
 Review and edit the VM configuration to fix hardware binding errors:
