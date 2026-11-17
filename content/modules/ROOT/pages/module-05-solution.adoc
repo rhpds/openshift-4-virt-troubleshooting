@@ -93,34 +93,36 @@ oc get vm,vmi vm8 -n {user}-troubleshoot-05
 
 ==== Guided Investigation & Root Cause Analysis
 
-. Check the high-level operational state of `vm9` and its DataVolumes:
+. Check the high-level operational state of `vm9` and any DataVolumes in the namespace:
 +
 [source,sh,subs="attributes+"]
 ----
 oc get vm,dv -n {user}-troubleshoot-05
 ----
 +
-_Observation:_ `vm9` remains in `Provisioning`, and the `vm-golden-rbac-fail-disk` DataVolume stays stuck in `Pending` or `WaitForFirstConsumer` without cloning progress.
+_Observation:_ `vm9` is stuck in `Provisioning`, and **no `DataVolume`** (`vm-golden-rbac-fail-disk`) has been created for `vm9`.
 
-. Describe the `vm-golden-rbac-fail-disk` DataVolume to inspect its status messages:
+. Describe the `vm9` Virtual Machine and check namespace events to see why the DataVolume was never instantiated:
 +
 [source,sh,subs="attributes+"]
 ----
-oc describe dv vm-golden-rbac-fail-disk -n {user}-troubleshoot-05
+oc describe vm vm9 -n {user}-troubleshoot-05
+oc get events -n {user}-troubleshoot-05 --sort-by='.metadata.creationTimestamp'
 ----
 +
-_Observation:_ Look at the *Status / Conditions* and *Events* output. CDI reports that the referenced `DataSource` named `centos9-golden` cannot be found in the local namespace (`{user}-troubleshoot-05`).
+_Observation:_ Look at the *Status / Conditions* and *Events* output. The VM controller fails during the `DataVolume` creation step because the referenced `DataSource` (`centos9-golden`) cannot be found in `{user}-troubleshoot-05`.
 
-. Verify where the `centos9-golden` `DataSource` actually resides across the cluster:
+. Inspect the `vm9` YAML manifest to review its `sourceRef` configuration:
 +
 [source,sh,subs="attributes+"]
 ----
-oc get datasource -A | grep centos9-golden
+oc get vm vm9 -n {user}-troubleshoot-05 -o yaml
 ----
 +
-_Observation:_ The `centos9-golden` `DataSource` is located in the `openshift` namespace, not in `{user}-troubleshoot-05`.
+_Observation:_ Under `spec.dataVolumeTemplates[0].spec.sourceRef`, `name: centos9-golden` is specified, but the `namespace` field is missing.
 
-. *Root Cause Analysis (RCA):* In `vm9`, the `dataVolumeTemplates` `sourceRef` block specifies `kind: DataSource` and `name: centos9-golden`, but omits the `namespace` field. When `namespace` is omitted in `sourceRef`, CDI defaults to looking in the same namespace as the VM (`{user}-troubleshoot-05`). Because `centos9-golden` lives in the `openshift` namespace, CDI cannot resolve the source image.
+. *Root Cause Analysis (RCA):* During Step 1 and Step 2 of the CDI workflow, the VM controller attempts to resolve `sourceRef` before instantiating the `DataVolume`. Because `namespace` was omitted under `sourceRef`, KubeVirt/CDI defaulted to searching inside `{user}-troubleshoot-05` instead of the `openshift` namespace where `centos9-golden` is hosted. As a result, `DataVolume` creation was blocked entirely.
+
 
 ==== Step-by-Step Resolution
 
