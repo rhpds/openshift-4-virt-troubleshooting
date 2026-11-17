@@ -25,6 +25,10 @@ Check the events of the failing virt-launcher pod for `vm3` to discover why it c
 [source,sh,subs="attributes+"]
 ----
 oc get pods -n {user}-troubleshoot-02
+----
+
+[source,sh,subs="attributes+"]
+----
 oc describe pod <virt-launcher-vm3-pod> -n {user}-troubleshoot-02
 ----
 
@@ -50,6 +54,10 @@ Check the VM events for `vm4` to find the crash-loop failure. The virt-launcher 
 [source,sh,subs="attributes+"]
 ----
 oc get vm vm4 -n {user}-troubleshoot-02
+----
+
+[source,sh,subs="attributes+"]
+----
 oc get events -n {user}-troubleshoot-02 --field-selector involvedObject.name=vm4
 ----
 
