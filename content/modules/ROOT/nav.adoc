@@ -4,7 +4,7 @@
 * xref:module-02.adoc[Module 2: Network Attachment & Scheduling]
 * xref:module-03.adoc[Module 3: Guest Readiness & Traffic]
 * xref:module-04.adoc[Module 4: Live Migration Readiness]
-* xref:module-05.adoc[Module 5: Guest Agent]
+* xref:module-05.adoc[Module 5: CDI Storage & DataVolume Troubleshooting]
 * xref:conclusion.adoc[Conclusion]
 
 
@@ -14,4 +14,4 @@
 ** xref:module-02-solution.adoc[Module 2 Solution: Network Attachment & Scheduling]
 ** xref:module-03-solution.adoc[Module 3 Solution: Guest Readiness & Traffic]
 ** xref:module-04-solution.adoc[Module 4 Solution: Live Migration Readiness]
-
+** xref:module-05-solution.adoc[Module 5 Solution: CDI Storage & DataVolume Troubleshooting]

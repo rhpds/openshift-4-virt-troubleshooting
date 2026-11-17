@@ -1,4 +1,4 @@
-= Lab 5: Guest Agent Troubleshooting
+= Lab: CDI Storage & DataVolume Troubleshooting
 
 == Environment Access & Credentials
 
@@ -17,62 +17,118 @@ To access the cluster via the CLI, use the *Terminal* tab on the right side of t
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 ----
 
+=== Credentials for the Quay Registry
+The Quay registry is available in the *Quay* tab on the right side of this screen. To open it in a separate browser tab instead, click {quay_url}[here^].
+
+Your Quay login is available with:
+
+* *User:* {quay_user}
+* *Password:* {quay_password}
+
 == Overview & Objectives
 
-A virtual machine is operational, but platform integrations that depend on the QEMU Guest Agent -- graceful shutdown, in-guest IP reporting, filesystem freeze/thaw, and memory ballooning -- do not work. By the end of this module, you will:
+This lab focuses on diagnosing and resolving Containerized Data Importer (CDI) storage and DataVolume provisioning issues in OpenShift Virtualization. By the end of this module, you will:
 
-* Validate guest agent connectivity from the VMI using the `AgentConnected` condition.
-* Diagnose a missing or disabled QEMU Guest Agent inside the guest OS.
-* Identify a missing VirtIO serial channel on the VM.
-* Recognize SELinux or firewall restrictions that block the guest agent.
+* Understand how CDI clones and provisions boot volumes from `DataSource` templates via `DataVolumeTemplates`.
+* Diagnose and resolve DataVolume issues and cross-namespace `DataSource` reference errors.
 
 [NOTE]
 ====
-We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issue on your own first -- that is where the best learning happens!
+This lab is designed to give you hands-on experience with real-world scenarios. We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issues on your own first—that is where the best learning happens! 
+
+If you get stuck or want to verify your findings, the companion *Guided Solution* is always available to help guide you through the next steps.
 ====
 
 == Tasks
 
-=== Task 1: Restoring Guest Agent Communication
+=== Task 1: Troubleshooting Failure Scenario A
 
 ==== Problem Scenario
-// TODO: replace <vm-name> with the broken VM deployed for this lab by the environment automation.
-A Virtual Machine named `<vm-name>` is running in the namespace `{user}-troubleshoot-05`, but it reports no guest IP address and graceful shutdown does not work.
+A Virtual Machine named `vm8` is configured to provision its root disk from a golden `DataSource` using a `DataVolumeTemplate` inside the namespace `{user}-troubleshoot-05`.
 
-Run the following command and note the missing IP address:
+When attempting to start the VM, the startup process stalls during storage provisioning, preventing the workload instance from launching.
+
+Run the following command to verify the current non-running state of `vm8`:
 [source,sh,subs="attributes+"]
 ----
-oc get vmi <vm-name> -n {user}-troubleshoot-05 -o wide
+oc get vm vm8 -n {user}-troubleshoot-05
+----
+
+The output should look similar to this:
+
+[source,texinfo]
+----
+NAME   AGE   STATUS         READY
+vm8    20h   Provisioning   False
+----
+
+==== Reference Documentation & Setup
+* Consult the Red Hat documentation on link:https://redhat.com[About DataVolumes in OpenShift Virtualization^].
+
+==== Goal
+Investigate the DataVolume and CDI events, determine why the storage provisioning is failing, patch the Virtual Machine configuration to resolve the issue, and transition `vm8` to a `Running` state.
+
+=== Task 2: Troubleshooting Failure Scenario B
+
+==== Problem Scenario
+A Virtual Machine named `vm9` fails to provision its boot disk in the namespace `{user}-troubleshoot-05`.
+
+The VM is configured with an instance type and preference to clone a shared golden image (`centos9-golden`) in openshift namespace, but the DataVolume never completes binding or cloning.
+
+Run the following command to verify the current non-running state of `vm9`:
+[source,sh,subs="attributes+"]
+----
+oc get vm vm9 -n {user}-troubleshoot-05
+----
+
+The output should look similar to this:
+
+[source,texinfo]
+----
+NAME   AGE   STATUS         READY
+vm9    20h   Provisioning   False
 ----
 
 ==== Goal
-Determine why the platform cannot talk to the guest agent, restore it, and verify that the VMI reports the guest IP and `AgentConnected: True`.
+Inspect the DataVolume and Virtual Machine specifications, pinpoint why CDI cannot locate the source image template, update the VM definition, and restore `vm9` to a `Running` state.
 
 == Suggested Troubleshooting Reference Workflow
 
-Check the guest agent condition. Look for `AgentConnected` being absent or `False`:
+Use the following commands in sequence to analyze the state of either Virtual Machine (`vm8` or `vm9`) and isolate the root cause of the CDI storage failures:
+
+Check high-level VM states:
 [source,sh,subs="attributes+"]
 ----
-oc describe vmi <vm-name> -n {user}-troubleshoot-05
+oc get vm -n {user}-troubleshoot-05
 ----
 
-Open the serial console and inspect the guest:
+Check DataVolumes and PersistentVolumeClaims:
 [source,sh,subs="attributes+"]
 ----
-virtctl console <vm-name> -n {user}-troubleshoot-05
+oc get dv,pvc -n {user}-troubleshoot-05
 ----
 
-Inside the guest, check each of the following:
-
-* Is the `qemu-guest-agent` package installed?
-* Is the service running and enabled? (`systemctl status qemu-guest-agent`)
-* Is the VirtIO channel present? (`org.qemu.guest_agent.0`)
-* Is SELinux or a firewall blocking the agent? (check the audit logs for denials)
-
-Typical faults to look for: a missing agent package, a disabled service, a missing VirtIO channel in the VM spec (a restart is required after adding it), or an SELinux/firewall restriction.
-
-Verify recovery:
+Inspect a specific DataVolume and its CDI condition messages (replace `<dv-name>` with the DataVolume name):
 [source,sh,subs="attributes+"]
 ----
-oc get vmi <vm-name> -n {user}-troubleshoot-05 -o wide
+oc describe dv <dv-name> -n {user}-troubleshoot-05
 ----
+
+Inspect the Virtual Machine specification (replace `<vm-name>` with `vm8` or `vm9`):
+[source,sh,subs="attributes+"]
+----
+oc get vm <vm-name> -n {user}-troubleshoot-05 -o yaml
+----
+
+Check for any importer or clone pods in the namespace:
+[source,sh,subs="attributes+"]
+----
+oc get pods -n {user}-troubleshoot-05
+----
+
+Query cluster events sorted chronologically:
+[source,sh,subs="attributes+"]
+----
+oc get events -n {user}-troubleshoot-05 --sort-by='.metadata.creationTimestamp'
+----
+

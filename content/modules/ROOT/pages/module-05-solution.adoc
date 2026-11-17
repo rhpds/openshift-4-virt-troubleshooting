@@ -1,0 +1,157 @@
+= Lab: CDI Storage & DataVolume Troubleshooting - Solutions
+
+== Environment Access & Credentials
+
+=== Credentials for the OpenShift Console
+The OpenShift web console is available in the *OCP Console* tab on the right side of this screen. To open it in a separate browser tab instead, click {openshift_console_url}[here^].
+
+Your login is available with:
+
+* *User:* {user}
+* *Password:* {password}
+
+To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
+
+[source,sh,subs="attributes+"]
+----
+oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
+----
+
+=== Credentials for the Quay Registry
+The Quay registry is available in the *Quay* tab on the right side of this screen. To open it in a separate browser tab instead, click {quay_url}[here^].
+
+Your Quay login is available with:
+
+* *User:* {quay_user}
+* *Password:* {quay_password}
+
+== Solution for Task 1: Troubleshooting Failure Scenario A
+
+==== Guided Investigation & Root Cause Analysis
+
+. Check the status of the Virtual Machine and its DataVolumes:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm,dv -n {user}-troubleshoot-05
+----
++
+_Observation:_ `vm8` is stuck in `Provisioning`, and the `rhel9-dv` DataVolume is not reaching the `Succeeded` phase.
+
+. Describe the `rhel9-dv` DataVolume to inspect its status conditions and events:
++
+[source,sh,subs="attributes+"]
+----
+oc describe dv rhel9-dv -n {user}-troubleshoot-05
+----
++
+_Observation:_ Look at the *Status / Conditions* and *Events* sections. CDI reports a validation failure indicating that the requested storage size (`25Gi`) is smaller than the source `rhel9` volume/PVC size (`30Gi`).
+
+. Inspect the `vm8` manifest to confirm the configured storage request:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm vm8 -n {user}-troubleshoot-05 -o yaml
+----
+
+. *Root Cause Analysis (RCA):* The `vm8` `dataVolumeTemplates` specification requests `25Gi` for `rhel9-dv`, which is smaller than the underlying `rhel9` golden image DataSource (`30Gi`) in the `openshift-virtualization-os-images` namespace. CDI prevents cloning into a target PVC that is smaller than the source volume. Furthermore, updating `dataVolumeTemplates` on an existing VM does not retroactively resize an already-created `DataVolume`, so the failed `DataVolume` must be deleted to trigger recreation.
+
+==== Step-by-Step Resolution
+
+. Patch the `vm8` Virtual Machine to increase the `dataVolumeTemplates` storage request from `25Gi` to `30Gi`:
++
+[source,sh,subs="attributes+"]
+----
+oc patch vm vm8 -n {user}-troubleshoot-05 --type='json' \
+  -p='[{"op": "replace", "path": "/spec/dataVolumeTemplates/0/spec/storage/resources/requests/storage", "value": "30Gi"}]'
+----
+
+. Delete the existing `rhel9-dv` DataVolume so the VM controller automatically recreates it using the updated `30Gi` template:
++
+[source,sh,subs="attributes+"]
+----
+oc delete dv rhel9-dv -n {user}-troubleshoot-05
+----
+
+. Monitor the newly created DataVolume until its phase reaches `Succeeded`:
++
+[source,sh,subs="attributes+"]
+----
+oc get dv rhel9-dv -n {user}-troubleshoot-05 -w
+----
++
+*(Press `Ctrl+C` once `PHASE` shows `Succeeded`.)*
+
+. Verify that `vm8` and its VMI transition to a `Running` state:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm,vmi vm8 -n {user}-troubleshoot-05
+----
+
+== Solution for Task 2: Troubleshooting Failure Scenario B
+
+==== Guided Investigation & Root Cause Analysis
+
+. Check the high-level operational state of `vm9` and its DataVolumes:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm,dv -n {user}-troubleshoot-05
+----
++
+_Observation:_ `vm9` remains in `Provisioning`, and the `vm-golden-rbac-fail-disk` DataVolume stays stuck in `Pending` or `WaitForFirstConsumer` without cloning progress.
+
+. Describe the `vm-golden-rbac-fail-disk` DataVolume to inspect its status messages:
++
+[source,sh,subs="attributes+"]
+----
+oc describe dv vm-golden-rbac-fail-disk -n {user}-troubleshoot-05
+----
++
+_Observation:_ Look at the *Status / Conditions* and *Events* output. CDI reports that the referenced `DataSource` named `centos9-golden` cannot be found in the local namespace (`{user}-troubleshoot-05`).
+
+. Verify where the `centos9-golden` `DataSource` actually resides across the cluster:
++
+[source,sh,subs="attributes+"]
+----
+oc get datasource -A | grep centos9-golden
+----
++
+_Observation:_ The `centos9-golden` `DataSource` is located in the `openshift` namespace, not in `{user}-troubleshoot-05`.
+
+. *Root Cause Analysis (RCA):* In `vm9`, the `dataVolumeTemplates` `sourceRef` block specifies `kind: DataSource` and `name: centos9-golden`, but omits the `namespace` field. When `namespace` is omitted in `sourceRef`, CDI defaults to looking in the same namespace as the VM (`{user}-troubleshoot-05`). Because `centos9-golden` lives in the `openshift` namespace, CDI cannot resolve the source image.
+
+==== Step-by-Step Resolution
+
+. Patch the `vm9` Virtual Machine to add `namespace: openshift` under `sourceRef`:
++
+[source,sh,subs="attributes+"]
+----
+oc patch vm vm9 -n {user}-troubleshoot-05 --type='json' \
+  -p='[{"op": "add", "path": "/spec/dataVolumeTemplates/0/spec/sourceRef/namespace", "value": "openshift"}]'
+----
+
+. Delete the existing `vm-golden-rbac-fail-disk` DataVolume so the VM controller recreates it with the updated cross-namespace `sourceRef`:
++
+[source,sh,subs="attributes+"]
+----
+oc delete dv vm-golden-rbac-fail-disk -n {user}-troubleshoot-05
+----
+
+. Monitor the recreated DataVolume until cloning completes and its phase reaches `Succeeded`:
++
+[source,sh,subs="attributes+"]
+----
+oc get dv vm-golden-rbac-fail-disk -n {user}-troubleshoot-05 -w
+----
++
+*(Press `Ctrl+C` once `PHASE` shows `Succeeded`.)*
+
+. Verify that `vm9` and its VMI transition to a `Running` state:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm,vmi vm9 -n {user}-troubleshoot-05
+----
+
