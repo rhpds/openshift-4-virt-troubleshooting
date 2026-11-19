@@ -31,8 +31,9 @@
     e2e_user_data_file: /user_data/user_data.yml
     e2e_modules: "1,2,3,4,5"
     e2e_module_list: "{{ (e2e_modules | string).split(',') | map('trim') | reject('equalto', '') | map('int') | list }}"
-    # The env lookup returns '' when unset, so default() must treat '' as undefined.
-    e2e_disposable: "{{ lookup('env', 'E2E_DISPOSABLE') | default('', true) | bool }}"
+    # The env lookup returns '' when unset, so default() must treat '' as undefined, and
+    # the fallback must be a bool literal: bool('') is deprecated from ansible-core 2.23.
+    e2e_disposable: "{{ lookup('env', 'E2E_DISPOSABLE') | default('false', true) | bool }}"
 
   tasks:
     - name: Refuse to run on a tenant that is not disposable
