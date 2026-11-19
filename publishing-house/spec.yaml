@@ -90,9 +90,9 @@ spec:
 development:
   automation:
     gitops:
-      status: in_progress
+      status: complete
     ansible:
-      status: in_progress
+      status: complete
   e2e:
     status: complete
   healthCheck:
