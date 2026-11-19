@@ -94,7 +94,7 @@ development:
     ansible:
       status: in_progress
   e2e:
-    status: in_progress
+    status: complete
   healthCheck:
     status: complete
 compliance:
