@@ -1,0 +1,48 @@
+---
+# module-03: vm5 runs but never becomes Ready because its cloud-init stops
+# qemu-guest-agent. The fault is read from the VM spec and the VMI conditions, which
+# needs no guest boot and no console automation. The guide's fix runs systemctl inside
+# the guest, so it is NOT VERIFIED.
+
+- name: Module 3 - guest agent
+  vars:
+    ns: "{{ user_data.user }}-troubleshoot-03"
+  block:
+
+    - name: vm5's cloud-init stops the guest agent
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - vm
+          - vm5
+          - -n
+          - "{{ ns }}"
+          - -o
+          - "jsonpath={range .spec.template.spec.volumes[*]}{.cloudInitNoCloud.userData}"
+      register: vm5_userdata
+      failed_when: "'systemctl, stop, qemu-guest-agent' not in vm5_userdata.stdout"
+      changed_when: false
+
+    - name: vm5 runs
+      ansible.builtin.command:
+        argv: [oc, get, vmi, vm5, -n, "{{ ns }}", -o, "jsonpath={.status.phase}"]
+      register: vm5_phase
+      until: vm5_phase.stdout == 'Running'
+      retries: 24
+      delay: 5
+      changed_when: false
+
+    - name: vm5 is not Ready
+      ansible.builtin.command:
+        argv: [oc, get, vmi, vm5, -n, "{{ ns }}", -o, "jsonpath={.status.conditions[?(@.type==\"Ready\")].status}"]
+      register: vm5_ready
+      failed_when: vm5_ready.stdout != 'False'
+      changed_when: false
+
+    - name: vm5 has no guest agent connection
+      ansible.builtin.command:
+        argv: [oc, get, vmi, vm5, -n, "{{ ns }}", -o, "jsonpath={.status.conditions[?(@.type==\"AgentConnected\")].status}"]
+      register: vm5_agent
+      failed_when: vm5_agent.stdout != ''
+      changed_when: false

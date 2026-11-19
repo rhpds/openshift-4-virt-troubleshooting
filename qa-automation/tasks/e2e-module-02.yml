@@ -1,0 +1,114 @@
+---
+# module-02: vm3 attaches vm-private-net, whose bridge is the typo enp2s0; vm4 has an
+# sriov interface and a /32 mask. Checks the faults are present, applies both fixes and
+# asserts the objects now carry them. It does not restart the VMs: the bridge recovery
+# and the guest's mask take minutes to observe.
+
+- name: Module 2 - VM networking
+  vars:
+    ns: "{{ user_data.user }}-troubleshoot-02"
+  block:
+
+    # vm3
+    - name: vm-private-net points at enp2s0
+      ansible.builtin.command:
+        argv: [oc, get, network-attachment-definitions, vm-private-net, -n, "{{ ns }}", -o, "jsonpath={.spec.config}"]
+      register: nad
+      failed_when: '"enp2s0" not in nad.stdout'
+      changed_when: false
+
+    - name: Point vm-private-net at br0
+      kubernetes.core.k8s:
+        merge_type: merge
+        definition:
+          apiVersion: k8s.cni.cncf.io/v1
+          kind: NetworkAttachmentDefinition
+          metadata:
+            name: vm-private-net
+            namespace: "{{ ns }}"
+          spec:
+            config: |
+              {
+                "name":"vm-private-net",
+                "type":"bridge",
+                "cniVersion":"0.3.1",
+                "bridge":"br0",
+                "macspoofchk":true,
+                "ipam":{},
+                "preserveDefaultVlan":false
+              }
+
+    - name: vm-private-net now points at br0
+      ansible.builtin.command:
+        argv: [oc, get, network-attachment-definitions, vm-private-net, -n, "{{ ns }}", -o, "jsonpath={.spec.config}"]
+      register: nad_fixed
+      failed_when: '"br0" not in nad_fixed.stdout or "enp2s0" in nad_fixed.stdout'
+      changed_when: false
+
+    # vm4
+    - name: vm4 has the sriov interface and the /32 mask
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - vm
+          - vm4
+          - -n
+          - "{{ ns }}"
+          - -o
+          - >-
+            jsonpath={.spec.template.spec.domain.devices.interfaces}{"|"}{.spec.template.spec.volumes[?(@.name=="cloudinitdisk")].cloudInitNoCloud.networkData}
+      register: vm4_faults
+      failed_when: '"sriov" not in vm4_faults.stdout or "/32" not in vm4_faults.stdout'
+      changed_when: false
+
+    - name: Replace the sriov interface with a bridge
+      kubernetes.core.k8s_json_patch:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: vm4
+        namespace: "{{ ns }}"
+        patch:
+          - op: replace
+            path: /spec/template/spec/domain/devices/interfaces/1
+            value: {name: secondary-net, bridge: {}}
+
+    - name: Get vm4
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: vm4
+        namespace: "{{ ns }}"
+      register: vm4_vm
+
+    - name: Change the /32 mask to /24, keeping the generated IP
+      vars:
+        volumes: "{{ vm4_vm.resources[0].spec.template.spec.volumes }}"
+        at: "{{ (volumes | map(attribute='name') | list).index('cloudinitdisk') }}"
+      kubernetes.core.k8s_json_patch:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: vm4
+        namespace: "{{ ns }}"
+        patch:
+          - op: replace
+            path: "/spec/template/spec/volumes/{{ at }}/cloudInitNoCloud/networkData"
+            value: "{{ volumes[at | int].cloudInitNoCloud.networkData | regex_replace('/32', '/24') }}"
+
+    - name: vm4 now has the bridge and the /24 mask
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - vm
+          - vm4
+          - -n
+          - "{{ ns }}"
+          - -o
+          - >-
+            jsonpath={.spec.template.spec.domain.devices.interfaces}{"|"}{.spec.template.spec.volumes[?(@.name=="cloudinitdisk")].cloudInitNoCloud.networkData}
+      register: vm4_fixed
+      failed_when: >-
+        "sriov" in vm4_fixed.stdout or "/32" in vm4_fixed.stdout or
+        "bridge" not in vm4_fixed.stdout or "/24" not in vm4_fixed.stdout
+      changed_when: false

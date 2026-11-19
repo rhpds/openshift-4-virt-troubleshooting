@@ -1,0 +1,78 @@
+---
+# module-01: vm1 cannot pull its image from Quay (no pull secret); vm2 needs a Secret
+# that is not there. Checks the faults are present and that the fix the guide applies is
+# accepted. It does not restart the VMs to watch them boot: the pull and the boot cost
+# minutes, and the fix either exists and is linked or it is not.
+
+- name: Module 1 - VM startup
+  vars:
+    ns: "{{ user_data.user }}-troubleshoot-01"
+  block:
+
+    - name: vm1 is stuck on the image pull
+      ansible.builtin.command:
+        argv: [oc, get, vm, vm1, -n, "{{ ns }}", -o, "jsonpath={.status.printableStatus}"]
+      register: vm1_status
+      until: "'ImagePullBackOff' in vm1_status.stdout"
+      retries: 24
+      delay: 5
+      changed_when: false
+
+    - name: Create the pull secret
+      ansible.builtin.command:
+        argv:
+          - oc
+          - create
+          - secret
+          - docker-registry
+          - registry-secret
+          - "--docker-server={{ user_data.quay_url }}"
+          - "--docker-username={{ user_data.quay_user }}"
+          - "--docker-password={{ user_data.quay_password }}"
+          - -n
+          - "{{ ns }}"
+      no_log: true
+
+    - name: Link the pull secret to the default ServiceAccount
+      ansible.builtin.command:
+        argv: [oc, secrets, link, default, registry-secret, --for=pull, -n, "{{ ns }}"]
+
+    - name: The pull secret is linked to the default ServiceAccount
+      ansible.builtin.command:
+        argv: [oc, get, sa, default, -n, "{{ ns }}", -o, "jsonpath={.imagePullSecrets[*].name}"]
+      register: sa_pull_secrets
+      failed_when: "'registry-secret' not in sa_pull_secrets.stdout"
+      changed_when: false
+
+    - name: vm2's user-credentials Secret
+      ansible.builtin.command:
+        argv: [oc, get, secret, user-credentials, -n, "{{ ns }}", -o, name]
+      register: vm2_secret
+      failed_when: false
+      changed_when: false
+
+    - name: Check vm2's Secret is missing
+      ansible.builtin.assert:
+        that: vm2_secret.rc != 0
+        fail_msg: "module-01: user-credentials already exists; this tenant is not fresh."
+
+    - name: Create the missing Secret
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: user-credentials
+            namespace: "{{ ns }}"
+          type: Opaque
+          stringData:
+            userdata: |
+              #cloud-config
+              user: admin
+              password: PasswordSecure99
+              chpasswd: { expire: False }
+
+    - name: The Secret exists
+      ansible.builtin.command:
+        argv: [oc, get, secret, user-credentials, -n, "{{ ns }}", -o, name]
+      changed_when: false

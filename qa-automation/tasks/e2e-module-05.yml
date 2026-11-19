@@ -1,0 +1,114 @@
+---
+# module-05: vm8 asks its DataVolume for 25Gi while the rhel9 source is 30Gi, and vm9's
+# sourceRef omits the namespace centos9-golden lives in. Follows
+# module-05-solution.adoc: patch the VM, then delete the DataVolume so the VM controller
+# recreates it.
+#
+# It stops once CDI accepts the fix and the DataVolume exists with the new spec, without
+# waiting for the clone to finish or the VM to boot: that costs minutes and module 2
+# already exercises a DataVolume-backed VM end to end.
+
+- name: Module 5 - CDI imports
+  vars:
+    ns: "{{ user_data.user }}-troubleshoot-05"
+  block:
+
+    # vm8
+    - name: vm8 asks for less than the source volume
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - vm
+          - vm8
+          - -n
+          - "{{ ns }}"
+          - -o
+          - "jsonpath={.spec.dataVolumeTemplates[0].spec.storage.resources.requests.storage}"
+      register: vm8_size
+      failed_when: vm8_size.stdout != '25Gi'
+      changed_when: false
+
+    - name: Ask for the source size
+      ansible.builtin.command:
+        argv:
+          - oc
+          - patch
+          - vm
+          - vm8
+          - -n
+          - "{{ ns }}"
+          - --type=json
+          - -p
+          - '[{"op": "replace", "path": "/spec/dataVolumeTemplates/0/spec/storage/resources/requests/storage", "value": "30Gi"}]'
+
+    - name: Delete the failed DataVolume so it is recreated
+      ansible.builtin.command:
+        argv: [oc, delete, dv, rhel9-dv, -n, "{{ ns }}", --ignore-not-found]
+
+    - name: The DataVolume is recreated at the source size
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - dv
+          - rhel9-dv
+          - -n
+          - "{{ ns }}"
+          - -o
+          - "jsonpath={.spec.storage.resources.requests.storage}"
+      register: vm8_dv
+      until: vm8_dv.stdout == '30Gi'
+      retries: 24
+      delay: 5
+      changed_when: false
+
+    # vm9
+    - name: vm9's sourceRef has no namespace
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - vm
+          - vm9
+          - -n
+          - "{{ ns }}"
+          - -o
+          - "jsonpath={.spec.dataVolumeTemplates[0].spec.sourceRef.namespace}"
+      register: vm9_source_ns
+      failed_when: vm9_source_ns.stdout != ''
+      changed_when: false
+
+    - name: Point sourceRef at the openshift namespace
+      ansible.builtin.command:
+        argv:
+          - oc
+          - patch
+          - vm
+          - vm9
+          - -n
+          - "{{ ns }}"
+          - --type=json
+          - -p
+          - '[{"op": "add", "path": "/spec/dataVolumeTemplates/0/spec/sourceRef/namespace", "value": "openshift"}]'
+
+    - name: Delete the DataVolume so it is recreated
+      ansible.builtin.command:
+        argv: [oc, delete, dv, vm-golden-rbac-fail-disk, -n, "{{ ns }}", --ignore-not-found]
+
+    - name: The DataVolume is created now that sourceRef resolves
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - dv
+          - vm-golden-rbac-fail-disk
+          - -n
+          - "{{ ns }}"
+          - -o
+          - "jsonpath={.metadata.name}"
+      register: vm9_dv
+      until: vm9_dv.stdout == 'vm-golden-rbac-fail-disk'
+      retries: 24
+      delay: 5
+      changed_when: false

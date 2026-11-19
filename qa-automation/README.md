@@ -33,5 +33,18 @@ ocp4_workload_showroom_runtime_automation_cluster_role: cluster-reader
 
 ## e2e.yml
 
-**Can a learner finish?** Not implemented yet — see
+**Can a learner finish?** Checks each fault is present, applies the fix the guide gives
+and asserts the fix was accepted: the pull secret is linked, the NetworkAttachmentDefinition
+and VM specs are corrected, `migration-quota` is gone, the DataVolume is recreated.
+
+It deliberately does not wait for VMs to boot or migrations to finish — that costs
+minutes and would dominate the run — so a full five-module pass takes well under two
+minutes. Module 3's in-guest fix is the only thing it cannot touch at all.
+
+It is destructive — it fixes the faults, deletes `migration-quota`, migrates vm6 and vm7
+and clones the module 5 disks — so it runs only on a disposable tenant and refuses to
+start unless `E2E_DISPOSABLE=true` is set on the Showroom runner.
+
+Select modules with `-e e2e_modules=1,3` or `--tags module03`. Module 3's fix runs inside
+the guest and is reported as NOT VERIFIED. Rationale:
 `docs/superpowers/specs/2026-11-13-e2e-design.md`.

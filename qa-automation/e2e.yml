@@ -1,13 +1,135 @@
----
-# E2E — End-to-end test
-# Runs all module solve + validate sequences to verify the full lab
-# works from start to finish without manual intervention.
+# End-to-end test: can a learner fix every fault the lab injects?
+#
+#   curl -sk -N "$SHOWROOM_URL/stream/qa/e2e"
+#
+# Destructive: it fixes the real faults and deletes migration-quota. It cannot be undone:
+# throw the tenant away afterwards. It therefore refuses to start unless
+# E2E_DISPOSABLE=true is set in the Showroom runner's environment (an env var, because
+# /stream/qa/e2e cannot pass extra vars).
+#
+# Each module checks the fault is present and that the guide's fix is accepted. It does
+# not wait for VMs to boot or migrations to finish: those take minutes, and the fix is
+# either applied or it is not.
+#
+# Modules: -e e2e_modules=1,3 or --tags module03. Default is all five.
+# Every write is made as the lab user, so a fix the lab user cannot make fails here too.
+# Module 3's fix runs inside the guest and is reported as NOT VERIFIED, not passed.
 
-- name: "End-to-End Test"
+- name: End-to-end test
   hosts: localhost
   connection: local
   gather_facts: false
+  module_defaults:
+    group/kubernetes.core.k8s:
+      kubeconfig: "{{ e2e_lab_kubeconfig }}"
+  # module_defaults does not reach oc.
+  environment:
+    KUBECONFIG: "{{ e2e_lab_kubeconfig }}"
+    K8S_AUTH_KUBECONFIG: "{{ e2e_lab_kubeconfig }}"
+  vars:
+    e2e_lab_kubeconfig: /tmp/e2e-lab-user.kubeconfig
+    e2e_user_data_file: /user_data/user_data.yml
+    e2e_modules: "1,2,3,4,5"
+    e2e_module_list: "{{ (e2e_modules | string).split(',') | map('trim') | reject('equalto', '') | map('int') | list }}"
+    # The env lookup returns '' when unset, so default() must treat '' as undefined.
+    e2e_disposable: "{{ lookup('env', 'E2E_DISPOSABLE') | default('', true) | bool }}"
+
   tasks:
-    - name: "TODO: Implement end-to-end test sequence"
-      ansible.builtin.debug:
-        msg: "Replace this task with your e2e test implementation"
+    - name: Refuse to run on a tenant that is not disposable
+      ansible.builtin.assert:
+        that: e2e_disposable | bool
+        fail_msg: >-
+          Every e2e run destroys the tenant it runs in. Set E2E_DISPOSABLE=true on the
+          Showroom runner, on a test tenant only. Nothing was read or changed.
+      tags: [always]
+
+    - name: Read the tenant identity
+      ansible.builtin.set_fact:
+        user_data: "{{ lookup('file', e2e_user_data_file) | from_yaml }}"
+      tags: [always]
+
+    - name: Start from no lab user kubeconfig
+      ansible.builtin.file:
+        path: "{{ e2e_lab_kubeconfig }}"
+        state: absent
+      tags: [always]
+
+    - name: Log in as the lab user
+      ansible.builtin.command:
+        argv:
+          - oc
+          - login
+          - "{{ user_data.openshift_api_url }}"
+          - -u
+          - "{{ user_data.user }}"
+          - -p
+          - "{{ user_data.password }}"
+          - --insecure-skip-tls-verify=true
+      changed_when: false
+      no_log: true
+      tags: [always]
+
+    - name: Run the modules
+      block:
+
+        - name: Run module 1
+          ansible.builtin.include_tasks:
+            file: tasks/e2e-module-01.yml
+            apply:
+              tags: [module01]
+          when: 1 in e2e_module_list
+          tags: [module01]
+
+        - name: Run module 2
+          ansible.builtin.include_tasks:
+            file: tasks/e2e-module-02.yml
+            apply:
+              tags: [module02]
+          when: 2 in e2e_module_list
+          tags: [module02]
+
+        - name: Run module 3
+          ansible.builtin.include_tasks:
+            file: tasks/e2e-module-03.yml
+            apply:
+              tags: [module03]
+          when: 3 in e2e_module_list
+          tags: [module03]
+
+        - name: Run module 4
+          ansible.builtin.include_tasks:
+            file: tasks/e2e-module-04.yml
+            apply:
+              tags: [module04]
+          when: 4 in e2e_module_list
+          tags: [module04]
+
+        - name: Run module 5
+          ansible.builtin.include_tasks:
+            file: tasks/e2e-module-05.yml
+            apply:
+              tags: [module05]
+          when: 5 in e2e_module_list
+          tags: [module05]
+
+      always:
+        - name: Log out the lab user
+          ansible.builtin.command:
+            argv: [oc, logout]
+          changed_when: false
+          failed_when: false
+          tags: [always]
+
+        - name: Remove the lab user kubeconfig
+          ansible.builtin.file:
+            path: "{{ e2e_lab_kubeconfig }}"
+            state: absent
+          tags: [always]
+
+        - name: Report what was not verified
+          ansible.builtin.debug:
+            msg: >-
+              NOT VERIFIED: module 3's fix, and every module stops once its fix is accepted
+              rather than waiting for VMs to boot or migrations to finish.
+          when: e2e_module_list | length > 0
+          tags: [always]

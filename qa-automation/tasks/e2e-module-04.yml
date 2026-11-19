@@ -1,0 +1,107 @@
+---
+# module-04: migration-quota blocks vm6's migration target pod and vm7's first launcher
+# pod; vm7 also has a required podAffinity to anchor-pod. Checks the faults, then applies
+# the guide's fixes and asserts they took. It does not wait for the migrations to finish:
+# each takes minutes, and the quota rejection is the fault being demonstrated.
+
+- name: Module 4 - live migration
+  vars:
+    ns: "{{ user_data.user }}-troubleshoot-04"
+  block:
+
+    - name: vm6 runs
+      ansible.builtin.command:
+        argv: [oc, get, vmi, vm6, -n, "{{ ns }}", -o, "jsonpath={.status.phase}"]
+      register: vm6_phase
+      until: vm6_phase.stdout == 'Running'
+      retries: 12
+      delay: 5
+      changed_when: false
+
+    - name: migration-quota exists
+      ansible.builtin.command:
+        argv: [oc, get, resourcequota, migration-quota, -n, "{{ ns }}", -o, name]
+      register: migration_quota
+      failed_when: false
+      changed_when: false
+
+    - name: Check migration-quota is present
+      ansible.builtin.assert:
+        that: migration_quota.rc == 0
+        fail_msg: "module-04: migration-quota is already gone; this tenant is not fresh."
+
+    - name: vm7 is pinned by its affinity
+      ansible.builtin.command:
+        argv: [oc, get, vm, vm7, -n, "{{ ns }}", -o, "jsonpath={.spec.template.spec.affinity}"]
+      register: vm7_affinity
+      failed_when: '"podAffinity" not in vm7_affinity.stdout'
+      changed_when: false
+
+    - name: Start the vm6 migration
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: kubevirt.io/v1
+          kind: VirtualMachineInstanceMigration
+          metadata:
+            name: e2e-vm6-migration
+            namespace: "{{ ns }}"
+          spec:
+            vmiName: vm6
+
+    - name: migration-quota rejects the vm6 target pod
+      ansible.builtin.command:
+        argv:
+          - oc
+          - get
+          - events
+          - -n
+          - "{{ ns }}"
+          - --field-selector
+          - reason=FailedCreate
+          - -o
+          - "jsonpath={range .items[*]}{.message}{\"\\n\"}{end}"
+      register: migration_quota_events
+      until: "'exceeded quota: migration-quota' in migration_quota_events.stdout"
+      retries: 24
+      delay: 5
+      changed_when: false
+
+    - name: Delete migration-quota
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: ResourceQuota
+        name: migration-quota
+        namespace: "{{ ns }}"
+        state: absent
+        wait: true
+
+    - name: migration-quota is gone
+      ansible.builtin.command:
+        argv: [oc, get, resourcequota, migration-quota, -n, "{{ ns }}", -o, name]
+      register: migration_quota_gone
+      failed_when: false
+      changed_when: false
+
+    - name: Check migration-quota is deleted
+      ansible.builtin.assert:
+        that: migration_quota_gone.rc != 0
+
+    - name: Remove the affinity rule
+      ansible.builtin.command:
+        argv:
+          - oc
+          - patch
+          - vm
+          - vm7
+          - -n
+          - "{{ ns }}"
+          - --type=json
+          - -p
+          - '[{"op": "remove", "path": "/spec/template/spec/affinity"}]'
+
+    - name: vm7 no longer has an affinity
+      ansible.builtin.command:
+        argv: [oc, get, vm, vm7, -n, "{{ ns }}", -o, "jsonpath={.spec.template.spec.affinity}"]
+      register: vm7_affinity_gone
+      failed_when: vm7_affinity_gone.stdout != ''
+      changed_when: false
