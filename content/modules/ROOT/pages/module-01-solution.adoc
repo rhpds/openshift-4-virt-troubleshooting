@@ -53,6 +53,9 @@ oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-01
 ----
 +
 _Observation:_ Look at the *Events* log at the bottom of the output. You will find `ErrImagePull` and `ImagePullBackOff` status codes.
++
+.Pod events showing `ErrImagePull` and `ImagePullBackOff` for `vm1`
+image::vm1-1-sol.png[Terminal output of oc describe pod showing ImagePullBackOff events, align="center"]
 
 . *Root Cause Analysis (RCA):* The OpenShift cluster nodes are unable to pull the container disk image because the target image resides inside a secured, private image registry, and no matching authentication credentials (pull secrets) exist in the `{user}-troubleshoot-01` namespace.
 
@@ -92,6 +95,9 @@ virtctl start vm1 -n {user}-troubleshoot-01
 ----
 oc get vmi vm1 -n {user}-troubleshoot-01
 ----
++
+.Terminal output confirming `vm1` is in the `Running` phase
+image::vm1-2-sol.png[Terminal output of oc get vmi vm1 showing Phase as Running and Ready as True, align="center"]
 
 == Solution for Task 2: Troubleshooting Failure Scenario B
 
@@ -133,7 +139,8 @@ oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-01
 ----
 +
 _Observation:_ Look closely at the *Events* section at the bottom of the pod description. You will see warning events explicitly stating that the pod cannot start because a volume mount is failing due to a missing secret named `user-credentials`.
-
+.Pod events showing `MountVolume.SetUp failed` due to missing `user-credentials` secret
+image::vm2-1-sol.png[Terminal output of oc describe pod showing missing user-credentials secret event, align="center"]
 
 . *Root Cause Analysis (RCA):* The `vm2` system configuration requires custom instance initialization metadata via Cloud-Init. This architecture references an Opaque Secret resource named `user-credentials`. The VM cannot finish initializing because this prerequisite secret asset is missing from the working namespace environment.
 
@@ -179,4 +186,6 @@ virtctl start vm2 -n {user}-troubleshoot-01
 ----
 oc get vmi vm2 -n {user}-troubleshoot-01
 ----
-
++
+.Terminal output confirming `vm2` is in the `Running` phase
+image::vm2-2-sol.png[Terminal output of oc get vmi vm2 showing Phase as Running and Ready as True, align="center"]
