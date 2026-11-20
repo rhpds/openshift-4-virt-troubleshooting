@@ -48,11 +48,16 @@ A Virtual Machine named `vm1` is configured to boot from a container disk image 
 
 When attempting to start the VM, the startup process fails and hangs indefinitely. The OpenShift Web Console reports that the system cannot spin up the workload instance.
 
+.Terminal output confirming `vm1` is stuck in the `Scheduling` phase
+image::vm1-1.png[Terminal output of oc get vmi vm1 showing Phase as Scheduling and Ready as False, align="center"]
+
 Run the following command to verify the current non-running state of `vm1`:
 [source,sh,subs="attributes+"]
 ----
 oc get vmi vm1 -n {user}-troubleshoot-01
 ----
+
+
 
 The output should look similar to this:
 
