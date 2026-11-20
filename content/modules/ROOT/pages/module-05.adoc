@@ -56,11 +56,8 @@ oc get vm vm8 -n {user}-troubleshoot-05
 
 The output should look similar to this:
 
-[source,texinfo]
-----
-NAME   AGE   STATUS         READY
-vm8    20h   Provisioning   False
-----
+.Terminal output confirming `vm8` is stuck in the `Provisioning` status
+image::vm8-1.png[Terminal output of oc get vm vm8 showing Status Provisioning and Ready False, align="center"]
 
 ==== Reference Documentation & Setup
 * Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/storage#dv-configuration-tasks[Data volumes in OpenShift Virtualization^].
@@ -84,11 +81,8 @@ oc get vm vm9 -n {user}-troubleshoot-05
 
 The output should look similar to this:
 
-[source,texinfo]
-----
-NAME   AGE   STATUS         READY
-vm9    20h   Stopped        False
-----
+.Terminal output confirming `vm9` is in a `Stopped` status
+image::vm9-1.png[Terminal output of oc get vm vm9 showing Status Stopped and Ready False, align="center"]
 
 [NOTE]
 ====

@@ -46,6 +46,9 @@ oc describe dv rhel9-dv -n {user}-troubleshoot-05
 ----
 +
 _Observation:_ Look at the *Status / Conditions* and *Events* sections. CDI reports a validation failure indicating that the requested storage size (`25Gi`) is smaller than the source `rhel9` volume/PVC size (`30Gi`).
++
+.DataVolume events showing the storage size mismatch error on `rhel9-dv`
+image::vm8-1-sol.png[Terminal output of oc describe dv rhel9-dv showing target size smaller than source, align="center"]
 
 . Inspect the `vm8` manifest to confirm the configured storage request:
 +
@@ -88,6 +91,9 @@ oc get dv rhel9-dv -n {user}-troubleshoot-05 -w
 ----
 oc get vm,vmi vm8 -n {user}-troubleshoot-05
 ----
++
+.Terminal output confirming `vm8` and its VMI are in the `Running` state
+image::vm8-2-sol.png[Terminal output of oc get vm,vmi vm8 showing Running state, align="center"]
 
 == Solution for Task 2: Troubleshooting Failure Scenario B
 
@@ -111,6 +117,9 @@ oc get events -n {user}-troubleshoot-05 --sort-by='.metadata.creationTimestamp'
 ----
 +
 _Observation:_ Look at the *Status / Conditions* and *Events* output. The VM controller fails during the `DataVolume` creation step because the referenced `DataSource` (`centos9-golden`) cannot be found in `{user}-troubleshoot-05`.
++
+.VM description showing the `Failure` condition due to the missing `DataSource` namespace
+image::vm9-1-sol.png[Terminal output of oc describe vm vm9 showing DataSource not found failure, align="center"]
 
 . Inspect the `vm9` YAML manifest to review its `sourceRef` configuration:
 +
@@ -156,4 +165,6 @@ oc get dv vm-golden-rbac-fail-disk -n {user}-troubleshoot-05 -w
 ----
 oc get vm,vmi vm9 -n {user}-troubleshoot-05
 ----
-
++
+.Terminal output confirming `vm9` and its VMI are in the `Running` state
+image::vm9-2-sol.png[Terminal output of oc get vm,vmi vm9 showing Running state, align="center"]
