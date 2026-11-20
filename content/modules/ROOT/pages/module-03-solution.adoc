@@ -55,6 +55,9 @@ oc get pods -n {user}-troubleshoot-03
 ----
 +
 _Observation:_ Look closely at the `READY` column status metrics for the tracking `virt-launcher` container architecture. **Observe that only `2/3` containers are running successfully**, indicating an intermediate operational failure or probe block.
++
+.Terminal output showing the `virt-launcher` pod with `2/3` containers ready
+image::vm5-1-sol.png[Terminal output of oc get pods showing 2/3 containers ready, align="center"]
 
 . Describe the running `virt-launcher` pod layout to inspect infrastructure events (replace `<virt-launcher-pod-name>` with the exact pod ID string returned in the previous step):
 +
@@ -64,6 +67,9 @@ oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-03
 ----
 +
 _Observation:_ Scroll down through the tracking output data fields down to the *Events* and container status parameters. **Locate the explicit warning details indicating a Readiness probe failure issue**, which prevents the third tracking gate container framework from shifting into a completely operational state.
++
+.Pod events showing `Readiness probe failed` on `vm5`
+image::vm5-sol-2.png[Terminal output of oc describe pod showing Readiness probe failed warning, align="center"]
 
 . Extract the full declaration manifest structure layout for `vm5` to examine its configured validation parameters:
 +
@@ -94,6 +100,9 @@ systemctl status qemu-guest-agent
 ----
 +
 _Observation:_ **Observe that the daemon reflects a status condition of `inactive (dead)` and its unit is `disabled`**, confirming that internal operating system barriers are locking out hypervisor integration metrics.
++
+.Guest OS console showing `qemu-guest-agent` is inactive and disabled
+image::vm5-3-sol.png[Terminal output showing systemctl status qemu-guest-agent inactive and disabled, align="center"]
 
 . *Root Cause Analysis (RCA):* The `vm5` architecture configures a cluster-level validation gate that depends on internal `guestAgentPing` signals. The network layout blocks incoming workload communication because the internal `qemu-guest-agent` daemon is completely disabled and stopped inside the Guest OS image, making the virtual machine permanently fail its readiness verification check.
 
@@ -140,5 +149,5 @@ systemctl status qemu-guest-agent
 oc get vmi vm5 -n {user}-troubleshoot-03
 ----
 +
-_Observation:_ The `READY` status field will now update to `True`, and the corresponding internal network interfaces and `IP ADDRESS` values will instantly display on both the CLI output and the OpenShift Web Console cards.
-
+.Terminal output confirming `vm5` is in the `Running` phase with `READY` set to `True`
+image::vm5-4-sol.png[Terminal output of oc get vmi vm5 showing Phase Running and Ready True, align="center"]
