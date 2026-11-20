@@ -139,6 +139,7 @@ oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-01
 ----
 +
 _Observation:_ Look closely at the *Events* section at the bottom of the pod description. You will see warning events explicitly stating that the pod cannot start because a volume mount is failing due to a missing secret named `user-credentials`.
++
 .Pod events showing `MountVolume.SetUp failed` due to missing `user-credentials` secret
 image::vm2-1-sol.png[Terminal output of oc describe pod showing missing user-credentials secret event, align="center"]
 
