@@ -81,7 +81,10 @@ _Observation:_ Scan the configuration arrays down to the `spec.template.spec` bl
 virtctl console vm5 -n {user}-troubleshoot-03
 ----
 +
-_Note: Log into the guest operating system interface using the standard lab credential pair: Username: `cloud-user`, Password: `password123`._
+_Note: Log into the guest operating system interface using the standard lab credential pair:
+
+* `cloud-user`
+* `password123`
 
 . Check the current runtime configuration state of the communication subsystem engine within the guest shell context:
 +
@@ -90,18 +93,20 @@ _Note: Log into the guest operating system interface using the standard lab cred
 systemctl status qemu-guest-agent
 ----
 +
-_Observation:_ **Observe that the daemon reflects a status condition of `inactive (dead)` and its unit layout configuration properties are flagged as `masked`**, confirming that internal operating system barriers are locking out hypervisor integration metrics.
+_Observation:_ **Observe that the daemon reflects a status condition of `inactive (dead)` and its unit is `disabled`**, confirming that internal operating system barriers are locking out hypervisor integration metrics.
 
-. *Root Cause Analysis (RCA):* The `vm5` architecture configures a cluster-level validation gate that depends on internal `guestAgentPing` signals. The network layout blocks incoming workload communication because the internal `qemu-guest-agent` daemon is completely masked and stopped inside the Guest OS image, making the virtual machine permanently fail its readiness verification check.
+. *Root Cause Analysis (RCA):* The `vm5` architecture configures a cluster-level validation gate that depends on internal `guestAgentPing` signals. The network layout blocks incoming workload communication because the internal `qemu-guest-agent` daemon is completely disabled and stopped inside the Guest OS image, making the virtual machine permanently fail its readiness verification check.
 
 ==== Step-by-Step Resolution
 
-. Unmask the service configuration block within the guest shell context to restore execution permissions:
+. Confirm the service unit is disabled (not masked):
 +
 [source,sh]
 ----
-sudo systemctl unmask qemu-guest-agent
+systemctl is-enabled qemu-guest-agent
 ----
++
+_Observation:_ The output is `disabled`. The unit is not masked, so no `unmask` step is required.
 
 . Start the service engine manually:
 +
@@ -116,6 +121,8 @@ sudo systemctl start qemu-guest-agent
 ----
 sudo systemctl enable qemu-guest-agent
 ----
++
+_Note:_ `systemctl enable` may print `Unit ... is added as a dependency to a non-existent unit dev-virtio\x2dports-org.qemu.guest_agent.0.device.` This is expected and harmless; KubeVirt creates the virtio-serial port at boot.
 
 . Verify inside the guest shell that the daemon status shows `active (running)`:
 +
