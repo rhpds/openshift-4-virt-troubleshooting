@@ -41,6 +41,17 @@ A Virtual Machine named `vm3` is deployed in the namespace `{user}-troubleshoot-
 
 The VM's underlying orchestration pod is unable to initialize because it cannot bind to the requested secondary network. A configuration error in the cluster's network attachment definition is causing a physical hardware collision.
 
+Run the following command to verify the current non-running state of `vm3`:
+[source,sh,subs="attributes+"]
+----
+oc get vm vm3 -n {user}-troubleshoot-02
+----
+
+The output should look similar to this:
+
+.Terminal output confirming `vm3` is failing to start
+image::vm3-1.png[Terminal output of oc get vm vm3 showing non-running state, align="center"]
+
 ==== Reference Documentation & Setup
 - Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/networking#virt-connecting-vm-to-linux-bridge[Connecting a virtual machine to a Linux bridge network^].
 - The VM relies on a custom NetworkAttachmentDefinition named `vm-private-net`.
@@ -54,6 +65,17 @@ Investigate the cluster's network definitions to determine why the secondary net
 A second Virtual Machine named `vm4` is deployed in the same namespace but remains stuck in a `Pending` state. The scheduler refuses to assign the workload to a node due to a mismatch in the requested network interface hardware.
 
 Furthermore, once the hardware request is corrected and the VM boots, it still lacks network connectivity. An error in the Cloud-Init configuration has injected a mathematically isolated subnet mask into the Guest OS, preventing traffic routing.
+
+Run the following command to verify the current non-running state of `vm4`:
+[source,sh,subs="attributes+"]
+----
+oc get vm vm4 -n {user}-troubleshoot-02
+----
+
+The output should look similar to this:
+
+.Terminal output confirming `vm4` is failing to start
+image::vm4-1.png[Terminal output of oc get vm vm4 showing non-running status, align="center"]
 
 ==== Reference Documentation & Setup
 - Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/networking#virt-connecting-vm-to-sriov[Connecting a virtual machine to an SR-IOV network^].
