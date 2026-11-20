@@ -70,30 +70,51 @@ _Note: You must fix this in the YAML tab because the UI Network Interfaces tab w
 . Click directly on the *YAML* tab.
 . Scroll down to `spec.template.spec.domain.devices.interfaces`.
 . Delete `sriov: {}` and type `bridge: {}` in its place.
-. Click *Save*. The pod will instantly get scheduled and `vm4` will boot up.
+. Click *Save*. 
+. Click the *Actions* dropdown at the top right and select *Restart* to apply the hardware change. The pod will now successfully get scheduled and `vm4` will boot up.
 
-=== Step 3: Discover the Layer 3 Typo
-The VM is now running, but it has no network connectivity.
+=== Step 3: Discover the Layer 3 Typo (The Illusion of Success)
+The VM is now running, but it has a hidden Layer 3 routing issue.
 
 . Click the *Console* tab for *vm4* in the OpenShift UI.
 . Log into the Guest OS (Username: `cloud-user`, Password: `password123`).
-. Run `ip a` and inspect `eth1`.
+. Find your dynamically assigned IP address on `eth1`:
++
+[source,sh,subs="attributes+"]
+----
+ip a show eth1
+----
+. Ping your own IP address (e.g., `ping -c 2 10.10.10.132`). It will succeed, creating the illusion that the network is fully functional. 
+. Now, attempt to ping the gateway of that network:
++
+[source,sh,subs="attributes+"]
+----
+ping -c 2 10.10.10.1
+----
 
-*Diagnostic finding:* `eth1` is configured with a `/32` mask (e.g., `10.10.10.X/32`). The `/32` subnet mask mathematically isolates the VM, preventing it from routing traffic to its gateway or other students' VMs.
+*Diagnostic finding:* The ping instantly fails with `connect: Network is unreachable`. Check your routing table (`ip route`). You will notice there is no route for the `10.10.10.0` network because `eth1` is configured with a `/32` mask. This mathematically isolates the VM.
 
-=== Step 4: Correct the Cloud-Init Injection
-Fix the subnet mask injected by Cloud-Init and restart the VM to apply it.
+=== Step 4: Correct the Cloud-Init Injection & Verify
+Fix the subnet mask injected by Cloud-Init and perform a hard stop/start to apply it.
 
-. Navigate to the *Configuration* tab for *vm4*, then the *Scripts* sub-tab.
-. Under the *Network Data* section, click *Edit*.
-. Change the address line from `/32` to `/24`. *Do not change the dynamically generated IP address itself*, only the mask suffix:
+. In the Web Console, navigate to the *YAML* tab for *vm4*. *(Do not use the Scripts tab, as it may hide network data).*
+. Scroll down to the `spec.template.spec.volumes` section and locate the `cloudInitNoCloud` block.
+. Under `networkData`, change the address line from `/32` to `/24`. *Do not change the dynamically generated IP address itself*, only the mask suffix:
 +
 [source,yaml]
 ----
-addresses:
-  - 10.10.10.X/24
+                  ethernets:
+                    eth1:
+                      addresses:
+                      - 10.10.10.X/24
 ----
-+
 . Click *Save*.
-. Because Cloud-Init only executes during the boot sequence, click the *Actions* dropdown at the top right and select *Restart*.
-. Once rebooted, open the *Console* and run `ip a` to verify `eth1` now correctly shows `/24`. Traffic will now route successfully.
+. For Cloud-Init hardware network changes to take effect, a simple reboot is not enough. Click the *Actions* dropdown at the top right and select *Stop*. Wait for it to fully stop, then select *Start*.
+. Once booted, open the *Console* and test the gateway ping again:
++
+[source,sh,subs="attributes+"]
+----
+ping -c 2 10.10.10.1
+----
+
+*Verification Success:* The output will now change to `From 10.10.10.X icmp_seq=1 Destination Host Unreachable`. This error shift proves your Layer 3 routing is completely fixed and the VM successfully pushed the packet out onto the Linux Bridge. It only fails because the gateway itself does not physically exist on this isolated bridge.
