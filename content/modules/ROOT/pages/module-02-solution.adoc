@@ -25,17 +25,21 @@ Check the events of the failing virt-launcher pod for `vm3` to discover why it c
 [source,sh,subs="attributes+"]
 ----
 oc get pods -n {user}-troubleshoot-02
+----
+
+[source,sh,subs="attributes+"]
+----
 oc describe pod <virt-launcher-vm3-pod> -n {user}-troubleshoot-02
 ----
 
-*Diagnostic finding:* At the bottom of the output, you will see a Multus network warning similar to: `Warning FailedCreatePodSandBox …​ device "enp2s0" already exists and is not a bridge.` This indicates the NetworkAttachmentDefinition is pointing to a physical network interface card instead of the required Linux bridge.
+*Diagnostic finding:* At the bottom of the output, you will see a Multus network warning similar to: `Warning FailedCreatePodSandBox …​ failed to create bridge "enp2s0": "enp2s0" already exists but is not a bridge.` This indicates the NetworkAttachmentDefinition is pointing to a physical network interface card instead of the required Linux bridge.
 
 === Step 2: Fix the NetworkAttachmentDefinition
 Edit the broken NetworkAttachmentDefinition to point to the correct bridge.
 
 [source,sh,subs="attributes+"]
 ----
-oc edit networkattachmentdefinition vm-private-net -n {user}-troubleshoot-02
+oc edit net-attach-def vm-private-net -n {user}-troubleshoot-02
 ----
 *(Alternatively, in the OpenShift Web Console: Navigate to Networking → NetworkAttachmentDefinitions → vm-private-net → YAML tab).*
 
@@ -45,15 +49,19 @@ oc edit networkattachmentdefinition vm-private-net -n {user}-troubleshoot-02
 == Task 2 Solution: Scheduling and Cloud-Init (Double Fault)
 
 === Step 1: Identify the Hardware Binding Error
-Check the events of the pending pod for `vm4` to find the scheduling failure.
+Check the VM events for `vm4` to find the crash-loop failure. The virt-launcher pod is repeatedly deleted, so `oc describe pod` may fail with NotFound.
 
 [source,sh,subs="attributes+"]
 ----
-oc get pods -n {user}-troubleshoot-02
-oc describe pod <virt-launcher-vm4-pod> -n {user}-troubleshoot-02
+oc get vm vm4 -n {user}-troubleshoot-02
 ----
 
-*Diagnostic finding:* You will see a scheduler warning: `0/X nodes are available: insufficient hardware resources (SR-IOV)`. The VM is requesting specialized SR-IOV hardware that does not exist on standard worker nodes.
+[source,sh,subs="attributes+"]
+----
+oc get events -n {user}-troubleshoot-02 --field-selector involvedObject.name=vm4
+----
+
+*Diagnostic finding:* You will see repeated VM events: `Warning SyncFailed server error. command SyncVMI failed: "failed to create SR-IOV hostdevices: failed to create PCI address pool with network status from file: context deadline exceeded: file is not populated with network-info"`, followed by `Stopped The VirtualMachineInstance crashed.`
 
 === Step 2: Fix the Interface Hardware Type
 _Note: You must fix this in the YAML tab because the UI Network Interfaces tab will auto-correct it for you, bypassing the learning objective._
