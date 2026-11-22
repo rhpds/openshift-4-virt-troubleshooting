@@ -76,7 +76,7 @@
         namespace: "{{ bootstrap_tenant_username }}-troubleshoot-04"
       spec:
         hard:
-          requests.memory: "3000Mi"
+          requests.memory: "3500Mi"
 
 - name: Deploy anchor-pod for affinity testing
   kubernetes.core.k8s:
