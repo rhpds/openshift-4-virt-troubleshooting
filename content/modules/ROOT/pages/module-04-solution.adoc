@@ -1,4 +1,4 @@
-= Lab 4: Guided Solution - Live Migration and Scheduling Troubleshooting
+= Lab 4: Live Migration and Scheduling Troubleshooting - Solutions
 
 == Environment Access & Credentials
 
@@ -17,224 +17,205 @@ To access the cluster via the CLI, use the *Terminal* tab on the right side of t
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 ----
 
-== Overview
+== Solution for Task 1: Troubleshooting Failure Scenario A
 
-This is the companion solution guide for Lab 4. It walks through the exact steps to reproduce and resolve both Live Migration faults for `vm6` and `vm7`. Each step shows the CLI command and, where useful, the equivalent OpenShift Web Console action.
+==== Guided Investigation & Root Cause Analysis
 
-== Task 1 Solution: Troubleshooting Quota-Blocked Migrations
-
-=== Step 1: Start the live migration
-
-Start a live migration of `vm6`:
-
+. Initiate a live migration for `vm6`:
++
 [source,sh,subs="attributes+"]
 ----
 virtctl migrate vm6 -n {user}-troubleshoot-04
 ----
++
+[TIP]
+====
+In the OpenShift Web Console, navigate to *Virtualization* → *VirtualMachines* → *vm6* → *Actions* → *Migrate*.
+====
++
+_Observation:_ The migration request is accepted, but it remains stuck in the `Preparing` phase (displayed as *Preparing for migration* in the Web Console).
 
-_Web Console:_ *Virtualization -> VirtualMachines -> vm6 -> Actions -> Migrate*.
-
-_Observation:_ The command is accepted, but the migration does not complete. It stays in `Preparing` (the console shows *Preparing for migration*).
-
-=== Step 2: Confirm the migration is stuck
-
-Check the migration object and the VM's current node:
-
+. Inspect the migration object and record the current `NODENAME` of `vm6`:
++
 [source,sh,subs="attributes+"]
 ----
 oc get vmim -n {user}-troubleshoot-04
 oc get vmi vm6 -n {user}-troubleshoot-04
 ----
++
+_Observation:_ A `VirtualMachineInstanceMigration` object exists, but its `PHASE` never reaches `Succeeded`, and `vm6` remains `Running` on its original node.
 
-_Observation:_ A `VirtualMachineInstanceMigration` object exists but its `PHASE` is not `Succeeded`, and `vm6` is still `Running` on its original node. Note the `NODENAME` before continuing so you can compare it later.
-
-=== Step 3: Find the rejected target pod
-
-Filter the namespace events for the quota rejection:
-
+. Check the pods in the namespace to see if a target migration pod was created:
++
 [source,sh,subs="attributes+"]
 ----
-oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp' | grep -i -E 'FailedCreate|quota'
+oc get pods -n {user}-troubleshoot-04
 ----
++
+_Observation:_ Only the original `virt-launcher-vm6` pod is listed; no second target pod exists.
 
-_Observation:_ You will see a warning like:
-
+. Query the recent namespace warning events to find out why the target pod was not created:
++
+[source,sh,subs="attributes+"]
+----
+oc get events -n {user}-troubleshoot-04 --field-selector type=Warning --sort-by='.lastTimestamp'
+----
++
+_Observation:_ At the bottom of the output, the event log reports a `FailedCreate` warning:
++
 [source,text]
 ----
 Warning  FailedCreate  ...  Error creating pod: pods "virt-launcher-vm6-..." is forbidden: exceeded quota: migration-quota, requested: requests.memory=..., used: ..., limited: 3000Mi
 ----
++
+.Terminal output showing `FailedCreate` warning due to `migration-quota` memory limit
+image::vm6-1-sol.png[Terminal output of oc get events showing FailedCreate exceeded quota migration-quota, align="center"]
 
-The event appears even though `oc get pods` never shows the target pod: Kubernetes rejects the pod before it is created.
+. *Root Cause Analysis (RCA):* A live migration requires spinning up a temporary second `virt-launcher` pod on the destination node before transferring memory state. Because the namespace `ResourceQuota` (`migration-quota`) caps total `requests.memory` at `3000Mi`—which `vm6` already consumes—Kubernetes admission control rejects the target pod before it is created, causing the migration to stall indefinitely.
 
-=== Step 4: Root cause
+==== Step-by-Step Resolution
 
-A live migration starts a temporary second `virt-launcher` pod on the target node. That pod must fit inside the namespace `ResourceQuota` `migration-quota`, which limits `requests.memory` to `3000Mi`. `vm6` alone already consumes most of that budget, so the target pod is rejected and the migration waits indefinitely.
-
-_Web Console:_
-
-. Navigate to *Home -> Events* (or *Administration -> Events*).
-. Set the Project to `{user}-troubleshoot-04`.
-. Look for the `FailedCreate` warning that mentions `migration-quota`.
-
-=== Step 5: Remove the quota
-
-Your tenant user has been granted the `quota-admin` role in this namespace:
-
+. Inspect the current `migration-quota` configuration to see its existing limits and usage:
++
 [source,sh,subs="attributes+"]
 ----
-oc delete resourcequota migration-quota -n {user}-troubleshoot-04
+oc describe resourcequota migration-quota -n {user}-troubleshoot-04
 ----
 
-_Web Console:_
+. Increase the `requests.memory` limit by 6Gi (from `3000Mi` to `9Gi`) so the namespace has enough headroom for both VMs and their temporary migration pods:
++
+[source,sh,subs="attributes+"]
+----
+oc patch resourcequota migration-quota -n {user}-troubleshoot-04 --type=merge -p '{"spec":{"hard":{"requests.memory":"6Gi"}}}'
+----
++
+[TIP]
+====
+Alternatively, run `oc edit resourcequota migration-quota -n {user}-troubleshoot-04` (or navigate to *Administration* → *ResourceQuotas* → *migration-quota* → *YAML* in the OpenShift Web Console) and update `spec.hard.requests.memory` to `6Gi`.
+====
 
-. Navigate to *Administration -> ResourceQuotas*.
-. Select the `{user}-troubleshoot-04` project.
-. Open the options menu next to `migration-quota` and choose *Delete ResourceQuota*.
+. Verify that the updated quota limits are active:
++
+[source,sh,subs="attributes+"]
+----
+oc describe resourcequota migration-quota -n {user}-troubleshoot-04
+----
 
-_Observation:_ The command returns `resourcequota "migration-quota" deleted`.
-
-=== Step 6: Verify the migration completes
-
+. Verify that the migration automatically resumes, completes (`Succeeded`), and moves `vm6` to a new node:
++
 [source,sh,subs="attributes+"]
 ----
 oc get vmim -n {user}-troubleshoot-04
 oc get vmi vm6 -n {user}-troubleshoot-04
 ----
++
+_Observation:_ Once the memory quota is increased to `9Gi`, the migration controller creates the target pod and completes the migration without requiring a VM restart. Compare the new `NODENAME` against Step 2 to confirm `vm6` migrated to a different node. (If the migration does not resume automatically, re-run `virtctl migrate vm6 -n {user}-troubleshoot-04`).
++
+.Terminal output confirming `vmim` reached `Succeeded` and `vm6` moved to a new node
+image::vm6-2-sol.png[Terminal output of oc get vmim and oc get vmi vm6 showing Succeeded migration on a new node, align="center"]
 
-_Observation:_ The migration reaches `Succeeded` and `vm6` is `Running` on a different node than the one you noted in Step 2. The target pod is created automatically and the migration resumes; no restart is required. If it has not resumed after a few minutes, re-run `virtctl migrate vm6 -n {user}-troubleshoot-04`.
+== Solution for Task 2: Troubleshooting Failure Scenario B
 
-== Task 2 Solution: Troubleshooting Scheduling Conflicts
+==== Guided Investigation & Root Cause Analysis
 
-=== Step 1: Make sure vm7 is running
-
-The `migration-quota` also blocked `vm7`'s first pod, so `vm7` may still be `Starting` after Task 1. Check:
-
+. Verify that `vm7` is in a `Running` state (the `migration-quota` from Task 1 may have previously blocked its initial pod from starting):
++
 [source,sh,subs="attributes+"]
 ----
-oc get vm vm7 -n {user}-troubleshoot-04
-oc get vmi vm7 -n {user}-troubleshoot-04
+oc get vm,vmi vm7 -n {user}-troubleshoot-04
 ----
++
+[NOTE]
+====
+If `vm7` is still in `Starting` or `Pending` after Task 1, restart it with `virtctl restart vm7 -n {user}-troubleshoot-04` and wait until `oc get vmi vm7 -n {user}-troubleshoot-04` reports `Running` before continuing.
+====
 
-_Observation:_ While the quota blocks it, the VMI stays `Pending` and no `virt-launcher-vm7-*` pod is ever created: the VMI itself is not a pod, so it is accepted, but the launcher pod is rejected at creation by quota admission. If `vm7` is still `Starting` after Task 1, restart it:
-
-[source,sh,subs="attributes+"]
-----
-virtctl restart vm7 -n {user}-troubleshoot-04
-----
-
-Wait until `oc get vmi vm7 -n {user}-troubleshoot-04` reports `Running` before continuing.
-
-=== Step 2: Start the migration
-
+. Initiate a live migration for `vm7`:
++
 [source,sh,subs="attributes+"]
 ----
 virtctl migrate vm7 -n {user}-troubleshoot-04
 ----
++
+_Observation:_ The migration transitions to `Migrating` and stalls indefinitely.
 
-_Web Console:_ *Virtualization -> VirtualMachines -> vm7 -> Actions -> Migrate*.
-
-_Observation:_ The migration is accepted and moves to `Migrating`, then stalls indefinitely.
-
-=== Step 3: Find the pending target pod
-
+. Inspect the pods in the namespace to identify the target migration pod:
++
 [source,sh,subs="attributes+"]
 ----
-oc get pods -n {user}-troubleshoot-04 | grep virt-launcher-vm7
+oc get pods -n {user}-troubleshoot-04
 ----
++
+_Observation:_ Two `virt-launcher-vm7` pods are present: the original `Running` source pod and a new target pod stuck in `Pending`.
 
-_Observation:_ There are two pods: the original `Running` pod and a new `virt-launcher-vm7-...` pod stuck in `Pending`.
-
-=== Step 4: Read the scheduler event
-
-Describe the pending pod and filter for the scheduling failure:
-
+. Describe the `Pending` target pod to view its scheduler events (replace `<pending-virt-launcher-vm7-pod>` with the pending pod name):
++
 [source,sh,subs="attributes+"]
 ----
-oc describe pod <pending-virt-launcher-vm7-pod> -n {user}-troubleshoot-04 | grep -A5 -i FailedScheduling
+oc describe pod <pending-virt-launcher-vm7-pod> -n {user}-troubleshoot-04
 ----
-
-Or filter the namespace events directly:
-
-[source,sh,subs="attributes+"]
-----
-oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp' | grep -i -E 'FailedScheduling|affinity'
-----
-
-_Observation:_ The scheduler reports:
-
++
+_Observation:_ Look at the *Events* section at the bottom of the output. The Kubernetes scheduler logs a `FailedScheduling` warning:
++
 [source,text]
 ----
 Warning  FailedScheduling  ...  0/X nodes are available: X node(s) didn't match pod affinity rules.
 ----
++
+.Terminal output showing `FailedScheduling` due to pod affinity rules
+image::vm7-1-sol.png[Terminal output of oc describe pod showing FailedScheduling pod affinity warning, align="center"]
 
-_Web Console:_
+. *Root Cause Analysis (RCA):* The `vm7` specification defines a hard `requiredDuringSchedulingIgnoredDuringExecution` `podAffinity` rule forcing the VM to co-locate on the exact same node as a pod labeled `app: anchor`. Because live migration requires scheduling the target pod onto a *different* node, no other node can satisfy the affinity rule.
 
-. Navigate to *Workloads -> Pods*.
-. Open the pending `virt-launcher-vm7-...` pod.
-. Check the *Events* tab.
+==== Step-by-Step Resolution
 
-=== Step 5: Cancel the stuck migration
-
+. Cancel the stuck live migration so the `Pending` target pod is cleaned up:
++
 [source,sh,subs="attributes+"]
 ----
 virtctl migrate-cancel vm7 -n {user}-troubleshoot-04
 ----
++
+[TIP]
+====
+In the OpenShift Web Console, navigate to *Virtualization* → *VirtualMachines* → *vm7* → *Actions* → *Cancel Migration*.
+====
 
-_Web Console:_ *Virtualization -> VirtualMachines -> vm7 -> Actions -> Cancel Migration*.
-
-_Observation:_ The `VirtualMachineInstanceMigration` object is removed and the pending target pod disappears.
-
-=== Step 6: Remove the strict affinity rule
-
-The VM template requires `vm7` to run on the same node as the pod labeled `app: anchor`, which makes migration to another node impossible. Edit the VM:
-
+. Patch `vm7` to remove the `spec.template.spec.affinity` block:
++
 [source,sh,subs="attributes+"]
 ----
-oc edit vm vm7 -n {user}-troubleshoot-04
+oc patch vm vm7 -n {user}-troubleshoot-04 --type=merge -p '{"spec":{"template":{"spec":{"affinity":null}}}}'
 ----
++
+[TIP]
+====
+Alternatively, run `oc edit vm vm7 -n {user}-troubleshoot-04` (or open *Virtualization* → *VirtualMachines* → *vm7* → *YAML* in the Web Console) and delete the entire `affinity` block under `spec.template.spec`.
+====
++
+.Terminal output confirming `vm7` was patched to remove `affinity`
+image::vm7-2-sol.png[Terminal output of oc patch vm vm7 showing virtualmachine.kubevirt.io/vm7 patched, align="center"]
 
-In `spec.template.spec`, delete the whole `affinity` block:
-
-[source,yaml]
-----
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: anchor
-              topologyKey: kubernetes.io/hostname
-----
-
-Save and exit. Alternatively, remove it non-interactively:
-
-[source,sh,subs="attributes+"]
-----
-oc patch vm vm7 --type=merge -p '{"spec":{"template":{"spec":{"affinity":null}}}}'
-----
-
-_Web Console:_
-
-. Navigate to *Virtualization -> VirtualMachines* and open `vm7`.
-. Switch to the *YAML* tab.
-. Delete the `affinity` block and click *Save*.
-
-_Observation:_ The change is applied to the running VMI as well, so a restart is not required. Confirm with:
-
+. Confirm that the affinity rule has been cleared from the active VMI spec (no restart is required):
++
 [source,sh,subs="attributes+"]
 ----
 oc get vmi vm7 -n {user}-troubleshoot-04 -o jsonpath='{.spec.affinity}{"\n"}'
 ----
++
+_Observation:_ The command returns an empty line.
 
-The command returns an empty line.
-
-=== Step 7: Migrate again and verify
-
+. Trigger a new live migration and verify that it succeeds and moves `vm7` to another node:
++
 [source,sh,subs="attributes+"]
 ----
 virtctl migrate vm7 -n {user}-troubleshoot-04
 oc get vmim -n {user}-troubleshoot-04
 oc get vmi vm7 -n {user}-troubleshoot-04
 ----
++
+_Observation:_ With the strict pod affinity rule removed, the scheduler places the target pod on an available worker node, the `VirtualMachineInstanceMigration` reaches `Succeeded`, and `vm7` runs smoothly on the destination node.
++
+.Terminal output confirming `vm7` live migration `Succeeded` on a new node
+image::vm7-3-sol.png[Terminal output of oc get vmim and oc get vmi vm7 showing Succeeded migration on a different node, align="center"]
 
-_Observation:_ The migration reaches `Succeeded` and `vm7` remains `Running`, now on a different node. Because the strict affinity rule is gone, the scheduler can place the target pod on any node that satisfies the VM's remaining requirements.
