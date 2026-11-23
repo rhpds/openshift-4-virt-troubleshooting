@@ -7,8 +7,8 @@ The OpenShift web console is available in the *OCP Console* tab on the right sid
 
 Your login is available with:
 
-- *User:* {user}
-- *Password:* {password}
+* *User:* {user}
+* *Password:* {password}
 
 To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
 
@@ -17,104 +17,115 @@ To access the cluster via the CLI, use the *Terminal* tab on the right side of t
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 ----
 
-== Tasks
+== Overview & Objectives
 
-=== Task 1: Troubleshooting Quota-Blocked Migrations (The Silent Failure)
+This lab focuses on diagnosing and resolving Virtual Machine live migration and scheduling issues in OpenShift Virtualization. By the end of this module, you will:
 
-==== Problem Scenario
-
-- A Virtual Machine `vm6` is deployed in namespace `{user}-troubleshoot-04`.
-- The VM appears completely healthy and ready. However, when an administrator attempts to Live Migrate it, the migration gets stuck and never completes.
-- Your tenant user has been granted a custom RBAC role (`quota-admin`) to manage resource limits in this specific namespace.
-
-==== Diagnostic Steps
-
-1. Navigate to *Virtualization -> VirtualMachines* in the OpenShift Web Console.
-2. Ensure your Project is set to `{user}-troubleshoot-04`.
-3. Click on `vm6`. On the *Overview* tab, note that there are no warnings.
-4. Click the *Actions* dropdown and select *Migrate*.
-5. The status will change to `Preparing for migration` but will fail to progress.
-6. To find out why, navigate to *Workloads -> Pods*. Notice that no target migration pod (`virt-launcher-vm6-...`) is spinning up.
-7. Click the *Events* tab for the namespace. You will see a `FailedCreate` error stating: `forbidden: exceeded quota: migration-quota`. Live Migration requires spinning up a second pod temporarily, and the namespace lacks the memory quota to allow it.
-
-==== Goal
-Using your delegated `quota-admin` permissions, resolve the `ResourceQuota` limitation so that the pending migration automatically resumes and completes.
-
-=== Task 2: Troubleshooting Scheduling Conflicts (The Stuck Target Pod)
+* Understand how OpenShift Virtualization orchestrates live migrations using target `virt-launcher` pods and `VirtualMachineInstanceMigration` (`vmim`) objects.
+* Inspect namespace policies, cluster events, pod statuses, and VirtualMachine specifications to diagnose stalled migrations.
 
 [NOTE]
 ====
-You must complete Task 1 and resolve the namespace `ResourceQuota` issue before attempting this task. If the quota is not updated, `vm7`'s migration will also be blocked by the quota, hiding the scheduling error.
+This lab is designed to give you hands-on experience with real-world scenarios. We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issues on your own first—that is where the best learning happens!
+
+If you get stuck or want to verify your findings, the companion *Guided Solution* is always available to help guide you through the next steps.
 ====
 
+== Tasks
+
+=== Task 1: Troubleshooting Failure Scenario A
+
 ==== Problem Scenario
+A Virtual Machine named `vm6` is deployed in the namespace `{user}-troubleshoot-04`.
 
-- A Virtual Machine `vm7` is deployed in namespace `{user}-troubleshoot-04`.
-- A developer applied strict Pod Affinity rules to keep the VM on the same node as a specific anchor pod. When an administrator attempts to Live Migrate the VM, the UI accepts the command, but the migration gets permanently stuck in a `Migrating` state.
+The VM appears completely healthy and ready. However, when attempting to Live Migrate it, the migration process stalls in a preparing state and never completes.
 
-==== Diagnostic Steps
-
-1. Navigate to *Virtualization -> VirtualMachines* in the OpenShift Web Console and click on `vm7`.
-2. Click *Actions -> Migrate*. The VM will enter the `Migrating` state but will not progress.
-3. Navigate to *Workloads -> Pods* in the `{user}-troubleshoot-04` namespace.
-4. Locate the new target pod named `virt-launcher-vm7-...` and notice its status is stuck in `Pending`.
-5. Click on the `Pending` pod and go to its *Events* tab.
-6. Investigate the events to determine why the Kubernetes scheduler refuses to place this workload on another node (you will see a `FailedScheduling` warning due to a pod affinity/anti-affinity conflict).
-
-==== Goal
-Cancel the stuck migration, modify the VirtualMachine configuration to remove the strict scheduling constraints, and successfully complete the Live Migration.
-
-== Reference Documentation & Helpful Commands
-
-=== Reference Documentation
-- Red Hat OpenShift Virtualization: link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/live_migration#virt-about-live-migration[About live migration^]
-- Kubernetes Documentation: link:https://kubernetes.io/docs/concepts/policy/resource-quotas/[Resource Quotas^]
-- Red Hat OpenShift Scheduling: link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/nodes/scheduling-pods-using-affinity-anti-affinity[Scheduling pods using affinity and anti-affinity^]
-
-=== Suggested Troubleshooting Commands
-
-Check the status of VirtualMachines and VirtualMachineInstances in your namespace:
+Run the following commands to initiate a migration and check the current status of `vm6` and its migration object:
 [source,sh,subs="attributes+"]
 ----
-oc get vm -n {user}-troubleshoot-04
-oc get vmi -n {user}-troubleshoot-04
+virtctl migrate vm6 -n {user}-troubleshoot-04
+oc get vm,vmim -n {user}-troubleshoot-04
 ----
 
-Check the underlying virt-launcher pods (including any target migration pods stuck in `Pending`):
+The terminal output should look similar to this:
+
+.Terminal output confirming `vm6` is stuck in `Preparing for migration`
+image::vm6-1.png[Terminal output of oc get vm and vmim showing vm6 stuck in Preparing for migration, align="center"]
+
+==== Reference Documentation
+* Consult the Red Hat documentation on link:https://redhat.com[About live migration^].
+
+==== Goal
+Investigate the cluster events and namespace configuration, determine why the migration workload cannot initialize, implement a fix using your tenant permissions, and ensure `vm6` completes its Live Migration to another node.
+
+=== Task 2: Troubleshooting Failure Scenario B
+
+==== Problem Scenario
+A Virtual Machine named `vm7` is deployed in the namespace `{user}-troubleshoot-04`.
+
+When attempting to Live Migrate `vm7` (ensure it is in a `Running` state first), the migration request is accepted and enters a `Migrating` state, but it never progresses or moves to another node.
+
+Run the following commands to initiate a migration and check the pods in your namespace:
+[source,sh,subs="attributes+"]
+----
+virtctl migrate vm7 -n {user}-troubleshoot-04
+oc get pods -n {user}-troubleshoot-04
+----
+
+The terminal output should look similar to this:
+
+.Terminal output showing the target `virt-launcher-vm7` pod stuck in `Pending`
+image::vm7-1.png[Terminal output of oc get pods showing running source pod and Pending target virt-launcher-vm7 pod, align="center"]
+
+==== Reference Documentation
+* Consult the Red Hat documentation on link:https://redhat.com[Controlling pod placement on nodes using scheduling rules^].
+
+==== Goal
+Investigate the stuck target pod and VirtualMachine definition, cancel the stalled migration, resolve the scheduling conflict, and successfully complete the Live Migration of `vm7`.
+
+== Suggested Troubleshooting Reference Workflow
+
+Use the following commands in sequence to analyze the state of either Virtual Machine (`vm6` or `vm7`) and isolate the root cause of the migration failures:
+
+Check high-level VM and VMI states (including current node placement):
+[source,sh,subs="attributes+"]
+----
+oc get vm,vmi -n {user}-troubleshoot-04
+----
+
+Check active `VirtualMachineInstanceMigration` objects:
+[source,sh,subs="attributes+"]
+----
+oc get vmim -n {user}-troubleshoot-04
+----
+
+Locate underlying `virt-launcher` pods (including any target migration pods):
 [source,sh,subs="attributes+"]
 ----
 oc get pods -n {user}-troubleshoot-04
 ----
 
-View recent namespace events to catch quota rejections and scheduling warnings:
-[source,sh,subs="attributes+"]
-----
-oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp'
-----
-
-Inspect and modify the namespace `ResourceQuota`:
-[source,sh,subs="attributes+"]
-----
-oc get resourcequota -n {user}-troubleshoot-04
-oc describe resourcequota migration-quota -n {user}-troubleshoot-04
-oc edit resourcequota migration-quota -n {user}-troubleshoot-04
-----
-
-Inspect a stuck target pod to view detailed scheduler errors:
+Inspect a specific pod configuration and events (replace `<virt-launcher-pod>` with the pod ID found above):
 [source,sh,subs="attributes+"]
 ----
 oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-04
 ----
 
-Inspect or edit the VirtualMachine YAML configuration:
+Inspect the VirtualMachine specification:
 [source,sh,subs="attributes+"]
 ----
-oc edit vm vm7 -n {user}-troubleshoot-04
+oc describe vm <vm-name> -n {user}-troubleshoot-04
 ----
 
-Cancel or trigger a Live Migration from the CLI:
+Check namespace policies and resource limits:
 [source,sh,subs="attributes+"]
 ----
-virtctl cancel-migration vm7 -n {user}-troubleshoot-04
-virtctl migrate vm7 -n {user}-troubleshoot-04
+oc get resourcequota,limitrange -n {user}-troubleshoot-04
 ----
+
+Query cluster events sorted chronologically:
+[source,sh,subs="attributes+"]
+----
+oc get events -n {user}-troubleshoot-04 --sort-by='.lastTimestamp'
+----
+
