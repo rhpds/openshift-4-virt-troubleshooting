@@ -92,7 +92,7 @@
         kind: Service
         metadata:
           name: vm4-web-svc
-          namespace: "{{ user }}-troubleshoot-02"
+          namespace: "{{ bootstrap_tenant_username }}-troubleshoot-02"
         spec:
           selector:
             app: vm4-web
@@ -106,7 +106,7 @@
         kind: Route
         metadata:
           name: vm4-web-route
-          namespace: "{{ user }}-troubleshoot-02"
+          namespace: "{{ bootstrap_tenant_username }}-troubleshoot-02"
         spec:
           to:
             kind: Service
