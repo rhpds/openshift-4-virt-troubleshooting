@@ -84,6 +84,35 @@
             "ipam":{},
             "preserveDefaultVlan":false
           }
+- name: Create vm4 Service and Route for Module 2
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: vm4-web-svc
+          namespace: "{{ user }}-troubleshoot-02"
+        spec:
+          selector:
+            app: vm4-web
+          ports:
+            - name: http
+              protocol: TCP
+              port: 8080
+              targetPort: 8080
+          type: ClusterIP
+      - apiVersion: route.openshift.io/v1
+        kind: Route
+        metadata:
+          name: vm4-web-route
+          namespace: "{{ user }}-troubleshoot-02"
+        spec:
+          to:
+            kind: Service
+            name: vm4-web-svc
+          port:
+            targetPort: http
 
 - name: Deploy broken VM scheduling failure - dynamic network
   kubernetes.core.k8s:
