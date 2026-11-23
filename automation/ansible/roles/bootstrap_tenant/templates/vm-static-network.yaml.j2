@@ -1,23 +1,18 @@
-{# Calculate the unique static IP host octet based on the dynamic tenant username string #}
-{% set base_ip = "10.10.10" %}
-{% set start_host = 50 %}
-{% set calculated_host = (bootstrap_tenant_username | hash('md5') | int(base=16) % 150) + start_host %}
----
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: vm4
-  namespace: "{{ bootstrap_tenant_username }}-troubleshoot-02"
-  labels:
-    app.kubernetes.io/part-of: virt-troubleshooting
+  namespace: ${USER}-troubleshoot-02
 spec:
-  running: true
+  runStrategy: Always
   template:
     metadata:
       labels:
-        kubevirt.io/vm: vm4
+        app: vm4-app
     spec:
       domain:
+        cpu:
+          cores: 1
         devices:
           disks:
             - disk:
@@ -27,37 +22,28 @@ spec:
                 bus: virtio
               name: cloudinitdisk
           interfaces:
-            - name: default
-              masquerade: {}
-            - name: secondary-net
-              # FAULT 1: The admin mistyped/selected SR-IOV instead of Bridge.
-              # This will cause the Pod to get stuck in "Pending" due to missing hardware.
-              sriov: {}
+            - masquerade: {}
+              name: default
         resources:
           requests:
-            memory: 1024Mi
+            memory: 1Gi
       networks:
         - name: default
           pod: {}
-        - name: secondary-net
-          multus:
-            networkName: healthy-flat-net # (Using the correct, healthy NAD)
       volumes:
-        - name: containerdisk
-          containerDisk:
-            # Using the standard RHEL 9 Guest Image
-            image: registry.redhat.io/rhel9/rhel-guest-image
-        - name: cloudinitdisk
-          cloudInitNoCloud:
+        - containerDisk:
+            image: quay.io/containerdisks/fedora:40
+          name: containerdisk
+        - cloudInitNoCloud:
             userData: |
               #cloud-config
               user: cloud-user
               password: password123
               chpasswd: { expire: False }
-            # FAULT 2: The static IP is injected with a /32 mask instead of /24
-            networkData: |
-              version: 2
-              ethernets:
-                eth1:
-                  addresses:
-                    - {{ base_ip }}.{{ calculated_host }}/32
+              runcmd:
+                - sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/*.repo
+                - dnf install -y --nogpgcheck httpd
+                - sed -i 's/^Listen 80/Listen 8080/' /etc/httpd/conf/httpd.conf
+                - echo "Hello from vm4 web service!" > /var/www/html/index.html
+                - systemctl enable --now httpd
+          name: cloudinitdisk
