@@ -192,9 +192,6 @@ oc patch vm vm7 -n {user}-troubleshoot-04 --type=merge -p '{"spec":{"template":{
 ====
 Alternatively, run `oc edit vm vm7 -n {user}-troubleshoot-04` (or open *Virtualization* → *VirtualMachines* → *vm7* → *YAML* in the Web Console) and delete the entire `affinity` block under `spec.template.spec`.
 ====
-+
-.Terminal output confirming `vm7` was patched to remove `affinity`
-image::vm7-2-sol.png[Terminal output of oc patch vm vm7 showing virtualmachine.kubevirt.io/vm7 patched, align="center"]
 
 . Confirm that the affinity rule has been cleared from the active VMI spec (no restart is required):
 +
@@ -217,5 +214,5 @@ oc get vmi vm7 -n {user}-troubleshoot-04
 _Observation:_ With the strict pod affinity rule removed, the scheduler places the target pod on an available worker node, the `VirtualMachineInstanceMigration` reaches `Succeeded`, and `vm7` runs smoothly on the destination node.
 +
 .Terminal output confirming `vm7` live migration `Succeeded` on a new node
-image::vm7-3-sol.png[Terminal output of oc get vmim and oc get vmi vm7 showing Succeeded migration on a different node, align="center"]
+image::vm7-2-sol.png[Terminal output of oc get vmim and oc get vmi vm7 showing Succeeded migration on a different node, align="center"]
 
