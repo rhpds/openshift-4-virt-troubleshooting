@@ -49,7 +49,7 @@ oc get vm,vmim -n {user}-troubleshoot-04
 
 The terminal output should look similar to this:
 
-.Terminal output confirming `vm6` is stuck in `Preparing for migration`
+.Terminal output showing the virtual machine instance migration for vm6 is stuck in `Pending`
 image::vm6-1.png[Terminal output of oc get vm and vmim showing vm6 stuck in Preparing for migration, align="center"]
 
 ==== Reference Documentation
@@ -74,7 +74,7 @@ oc get pods -n {user}-troubleshoot-04
 
 The terminal output should look similar to this:
 
-.Terminal output showing the target `virt-launcher-vm7` pod stuck in `Pending`
+.Terminal output showing the virtual machine instance migration for vm7 is stuck in `Pending`
 image::vm7-1.png[Terminal output of oc get pods showing running source pod and Pending target virt-launcher-vm7 pod, align="center"]
 
 ==== Reference Documentation
