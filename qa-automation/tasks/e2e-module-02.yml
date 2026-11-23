@@ -1,8 +1,11 @@
 ---
-# module-02: vm3 attaches vm-private-net, whose bridge is the typo enp2s0; vm4 has an
-# sriov interface and a /32 mask. Checks the faults are present, applies both fixes and
-# asserts the objects now carry them. It does not restart the VMs: the bridge recovery
-# and the guest's mask take minutes to observe.
+# module-02: vm3 attaches vm-private-net, whose bridge is the typo enp2s0; vm4 runs a web
+# server behind vm4-web-svc, whose selector (app=vm4-web) matches no vm4 pod
+# (app=vm4-app), so vm4-web-route has no endpoints and returns 503. Follows
+# module-02-solution.adoc.
+#
+# It checks the faults are present and that both fixes are accepted. It does not wait
+# for vm3 to recover or for the Route to answer: both take minutes.
 
 - name: Module 2 - VM networking
   vars:
@@ -46,69 +49,36 @@
       changed_when: false
 
     # vm4
-    - name: vm4 has the sriov interface and the /32 mask
+    - name: vm4-web-svc selects a label no vm4 pod carries
       ansible.builtin.command:
-        argv:
-          - oc
-          - get
-          - vm
-          - vm4
-          - -n
-          - "{{ ns }}"
-          - -o
-          - >-
-            jsonpath={.spec.template.spec.domain.devices.interfaces}{"|"}{.spec.template.spec.volumes[?(@.name=="cloudinitdisk")].cloudInitNoCloud.networkData}
-      register: vm4_faults
-      failed_when: '"sriov" not in vm4_faults.stdout or "/32" not in vm4_faults.stdout'
+        argv: [oc, get, svc, vm4-web-svc, -n, "{{ ns }}", -o, "jsonpath={.spec.selector.app}"]
+      register: vm4_svc_selector
+      failed_when: vm4_svc_selector.stdout != 'vm4-web'
       changed_when: false
 
-    - name: Replace the sriov interface with a bridge
-      kubernetes.core.k8s_json_patch:
-        api_version: kubevirt.io/v1
-        kind: VirtualMachine
-        name: vm4
-        namespace: "{{ ns }}"
-        patch:
-          - op: replace
-            path: /spec/template/spec/domain/devices/interfaces/1
-            value: {name: secondary-net, bridge: {}}
+    - name: vm4's pod carries the app=vm4-app label
+      ansible.builtin.command:
+        argv: [oc, get, vm, vm4, -n, "{{ ns }}", -o, "jsonpath={.spec.template.metadata.labels.app}"]
+      register: vm4_pod_label
+      failed_when: vm4_pod_label.stdout != 'vm4-app'
+      changed_when: false
 
-    - name: Get vm4
-      kubernetes.core.k8s_info:
-        api_version: kubevirt.io/v1
-        kind: VirtualMachine
-        name: vm4
-        namespace: "{{ ns }}"
-      register: vm4_vm
-
-    - name: Change the /32 mask to /24, keeping the generated IP
-      vars:
-        volumes: "{{ vm4_vm.resources[0].spec.template.spec.volumes }}"
-        at: "{{ (volumes | map(attribute='name') | list).index('cloudinitdisk') }}"
-      kubernetes.core.k8s_json_patch:
-        api_version: kubevirt.io/v1
-        kind: VirtualMachine
-        name: vm4
-        namespace: "{{ ns }}"
-        patch:
-          - op: replace
-            path: "/spec/template/spec/volumes/{{ at }}/cloudInitNoCloud/networkData"
-            value: "{{ volumes[at | int].cloudInitNoCloud.networkData | regex_replace('/32', '/24') }}"
-
-    - name: vm4 now has the bridge and the /24 mask
+    - name: Point the Service selector at the vm4 pod label
       ansible.builtin.command:
         argv:
           - oc
-          - get
-          - vm
-          - vm4
+          - patch
+          - svc
+          - vm4-web-svc
           - -n
           - "{{ ns }}"
-          - -o
-          - >-
-            jsonpath={.spec.template.spec.domain.devices.interfaces}{"|"}{.spec.template.spec.volumes[?(@.name=="cloudinitdisk")].cloudInitNoCloud.networkData}
-      register: vm4_fixed
-      failed_when: >-
-        "sriov" in vm4_fixed.stdout or "/32" in vm4_fixed.stdout or
-        "bridge" not in vm4_fixed.stdout or "/24" not in vm4_fixed.stdout
+          - --type=merge
+          - -p
+          - '{"spec":{"selector":{"app":"vm4-app"}}}'
+
+    - name: vm4-web-svc now selects the vm4 pod
+      ansible.builtin.command:
+        argv: [oc, get, svc, vm4-web-svc, -n, "{{ ns }}", -o, "jsonpath={.spec.selector.app}"]
+      register: vm4_svc_fixed
+      failed_when: vm4_svc_fixed.stdout != 'vm4-app'
       changed_when: false

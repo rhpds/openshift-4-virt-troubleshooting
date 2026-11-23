@@ -2,8 +2,8 @@
 #
 #   curl -sk -N "$SHOWROOM_URL/stream/qa/e2e"
 #
-# Destructive: it fixes the real faults and deletes migration-quota. It cannot be undone:
-# throw the tenant away afterwards. It therefore refuses to start unless
+# Destructive: it fixes the real faults and raises migration-quota to 6Gi. It cannot be
+# undone: throw the tenant away afterwards. It therefore refuses to start unless
 # E2E_DISPOSABLE=true is set in the Showroom runner's environment (an env var, because
 # /stream/qa/e2e cannot pass extra vars).
 #

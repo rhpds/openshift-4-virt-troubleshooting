@@ -27,10 +27,11 @@
   vars:
     failures: []
     expected_vms: [vm1, vm2, vm3, vm4, vm5, vm6, vm7]
-    # vm5 and vm6 boot normally; their faults only appear later, inside the guest
-    # and on migration. The other five are not expected to reach Running, and one
+    # vm4, vm5, vm6 and vm7 boot normally; their faults are not about reaching Running
+    # (the web Service selector, the guest agent, the migration quota and vm7's pod
+    # affinity respectively). The other three are not expected to reach Running, and one
     # that does means its fault is no longer reproducing.
-    expected_running: [vm5, vm6]
+    expected_running: [vm4, vm5, vm6, vm7]
 
   tasks:
 

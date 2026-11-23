@@ -1,8 +1,10 @@
 ---
-# module-04: migration-quota blocks vm6's migration target pod and vm7's first launcher
-# pod; vm7 also has a required podAffinity to anchor-pod. Checks the faults, then applies
-# the guide's fixes and asserts they took. It does not wait for the migrations to finish:
-# each takes minutes, and the quota rejection is the fault being demonstrated.
+# module-04: migration-quota at 3500Mi leaves vm6's migration target pod no room, while
+# vm7 runs and its required podAffinity to anchor-pod blocks its migration. Follows
+# module-04-solution.adoc: raise the quota to 6Gi, then remove vm7's affinity.
+#
+# It checks both faults are present and that the fixes are accepted. It does not wait
+# for the migrations to finish: each takes minutes.
 
 - name: Module 4 - live migration
   vars:
@@ -28,7 +30,23 @@
     - name: Check migration-quota is present
       ansible.builtin.assert:
         that: migration_quota.rc == 0
-        fail_msg: "module-04: migration-quota is already gone; this tenant is not fresh."
+        fail_msg: "module-04: migration-quota is missing; this tenant is not fresh."
+
+    - name: migration-quota is at 3500Mi
+      ansible.builtin.command:
+        argv: [oc, get, resourcequota, migration-quota, -n, "{{ ns }}", -o, "jsonpath={.spec.hard.requests\\.memory}"]
+      register: migration_quota_hard
+      failed_when: migration_quota_hard.stdout != '3500Mi'
+      changed_when: false
+
+    - name: vm7 runs
+      ansible.builtin.command:
+        argv: [oc, get, vmi, vm7, -n, "{{ ns }}", -o, "jsonpath={.status.phase}"]
+      register: vm7_phase
+      until: vm7_phase.stdout == 'Running'
+      retries: 24
+      delay: 5
+      changed_when: false
 
     - name: vm7 is pinned by its affinity
       ansible.builtin.command:
@@ -66,25 +84,25 @@
       delay: 5
       changed_when: false
 
-    - name: Delete migration-quota
-      kubernetes.core.k8s:
-        api_version: v1
-        kind: ResourceQuota
-        name: migration-quota
-        namespace: "{{ ns }}"
-        state: absent
-        wait: true
-
-    - name: migration-quota is gone
+    - name: Raise migration-quota to 6Gi
       ansible.builtin.command:
-        argv: [oc, get, resourcequota, migration-quota, -n, "{{ ns }}", -o, name]
-      register: migration_quota_gone
-      failed_when: false
-      changed_when: false
+        argv:
+          - oc
+          - patch
+          - resourcequota
+          - migration-quota
+          - -n
+          - "{{ ns }}"
+          - --type=merge
+          - -p
+          - '{"spec":{"hard":{"requests.memory":"6Gi"}}}'
 
-    - name: Check migration-quota is deleted
-      ansible.builtin.assert:
-        that: migration_quota_gone.rc != 0
+    - name: migration-quota is now 6Gi
+      ansible.builtin.command:
+        argv: [oc, get, resourcequota, migration-quota, -n, "{{ ns }}", -o, "jsonpath={.spec.hard.requests\\.memory}"]
+      register: migration_quota_fixed
+      failed_when: migration_quota_fixed.stdout != '6Gi'
+      changed_when: false
 
     - name: Remove the affinity rule
       ansible.builtin.command:
