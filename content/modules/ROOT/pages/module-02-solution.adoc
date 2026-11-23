@@ -1,4 +1,4 @@
-= Lab 2: VM Network Troubleshooting - Solution Guide
+= Lab 2: VM Network Troubleshooting - Solutions
 
 == Environment Access & Credentials
 
@@ -7,8 +7,8 @@ The OpenShift web console is available in the *OCP Console* tab on the right sid
 
 Your login is available with:
 
-- *User:* {user}
-- *Password:* {password}
+* *User:* {user}
+* *Password:* {password}
 
 To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
 
@@ -17,104 +17,151 @@ To access the cluster via the CLI, use the *Terminal* tab on the right side of t
 oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 ----
 
-== Task 1 Solution: CNI and Network Attachment (Layer 2 Fault)
+== Solution for Task 1: Troubleshooting Failure Scenario A
 
-=== Step 1: Identify the CNI Failure
-Check the events of the failing virt-launcher pod for `vm3` to discover why it cannot start.
+==== Guided Investigation & Root Cause Analysis
 
+. Check the status of the Virtual Machine Instance:
++
+[source,sh,subs="attributes+"]
+----
+oc get vmi vm3 -n {user}-troubleshoot-02
+----
++
+_Observation:_ The VMI remains stuck in the `Scheduling` or `Pending` phase and never enters `Running`.
+
+. Locate the active `virt-launcher` pod in the target namespace:
++
 [source,sh,subs="attributes+"]
 ----
 oc get pods -n {user}-troubleshoot-02
 ----
 
-[source,sh,subs="attributes+"]
-----
-oc describe pod <virt-launcher-vm3-pod> -n {user}-troubleshoot-02
-----
-
-*Diagnostic finding:* At the bottom of the output, you will see a Multus network warning similar to: `Warning FailedCreatePodSandBox …​ failed to create bridge "enp2s0": "enp2s0" already exists but is not a bridge.` This indicates the NetworkAttachmentDefinition is pointing to a physical network interface card instead of the required Linux bridge.
-
-=== Step 2: Fix the NetworkAttachmentDefinition
-Edit the broken NetworkAttachmentDefinition to point to the correct bridge.
-
-[source,sh,subs="attributes+"]
-----
-oc edit net-attach-def vm-private-net -n {user}-troubleshoot-02
-----
-*(Alternatively, in the OpenShift Web Console: Navigate to Networking → NetworkAttachmentDefinitions → vm-private-net → YAML tab).*
-
-. Locate the JSON config block and change `"bridge":"enp2s0"` to `"bridge":"br0"`.
-. Save the changes. The CNI plugin will immediately re-attempt the connection, successfully attach to `br0`, and `vm3` will boot into a `Running` state.
-
-== Task 2 Solution: Scheduling and Cloud-Init (Double Fault)
-
-=== Step 1: Identify the Hardware Binding Error
-Check the VM events for `vm4` to find the crash-loop failure. The virt-launcher pod is repeatedly deleted, so `oc describe pod` may fail with NotFound.
-
-[source,sh,subs="attributes+"]
-----
-oc get vm vm4 -n {user}-troubleshoot-02
-----
-
-[source,sh,subs="attributes+"]
-----
-oc get events -n {user}-troubleshoot-02 --field-selector involvedObject.name=vm4
-----
-
-*Diagnostic finding:* You will see repeated VM events: `Warning SyncFailed server error. command SyncVMI failed: "failed to create SR-IOV hostdevices: failed to create PCI address pool with network status from file: context deadline exceeded: file is not populated with network-info"`, followed by `Stopped The VirtualMachineInstance crashed.`
-
-=== Step 2: Fix the Interface Hardware Type
-_Note: You must fix this in the YAML tab because the UI Network Interfaces tab will auto-correct it for you, bypassing the learning objective._
-
-. In the Web Console, navigate to *Virtualization* → *VirtualMachines* and click on *vm4*.
-. Click directly on the *YAML* tab.
-. Scroll down to `spec.template.spec.domain.devices.interfaces`.
-. Delete `sriov: {}` and type `bridge: {}` in its place.
-. Click *Save*. 
-. Click the *Actions* dropdown at the top right and select *Restart* to apply the hardware change. The pod will now successfully get scheduled and `vm4` will boot up.
-
-=== Step 3: Discover the Layer 3 Typo (The Illusion of Success)
-The VM is now running, but it has a hidden Layer 3 routing issue.
-
-. Click the *Console* tab for *vm4* in the OpenShift UI.
-. Log into the Guest OS (Username: `cloud-user`, Password: `password123`).
-. Find your dynamically assigned IP address on `eth1`:
+. Describe the `virt-launcher` pod to check its status fields (replace `<virt-launcher-pod-name>` with the pod ID returned from the previous command):
 +
 [source,sh,subs="attributes+"]
 ----
-ip a show eth1
+oc describe pod <virt-launcher-pod-name> -n {user}-troubleshoot-02
 ----
-. Ping your own IP address (e.g., `ping -c 2 10.10.10.132`). It will succeed, creating the illusion that the network is fully functional. 
-. Now, attempt to ping the gateway of that network:
++
+_Observation:_ Look at the *Events* log at the bottom of the output. You will find a `FailedCreatePodSandBox` warning stating `failed to create bridge "enp2s0": "enp2s0" already exists but is not a bridge`.
++
+.Pod events showing `FailedCreatePodSandBox` due to invalid bridge `enp2s0`
+image::vm3-1-sol.png[Terminal output of oc describe pod showing Multus failed to create bridge enp2s0 event, align="center"]
+
+. Inspect the `NetworkAttachmentDefinition` configuration in the namespace:
 +
 [source,sh,subs="attributes+"]
 ----
-ping -c 2 10.10.10.1
+oc get net-attach-def vm-private-net -n {user}-troubleshoot-02 -o yaml
 ----
 
-*Diagnostic finding:* The ping instantly fails with `connect: Network is unreachable`. Check your routing table (`ip route`). You will notice there is no route for the `10.10.10.0` network because `eth1` is configured with a `/32` mask. This mathematically isolates the VM.
+. *Root Cause Analysis (RCA):* The `NetworkAttachmentDefinition` (`vm-private-net`) is misconfigured to attach the secondary network interface to a physical network interface card (`enp2s0`) instead of the host's configured Linux bridge (`br0`). Because `enp2s0` is already a physical device, the CNI bridge plugin fails to create the pod sandbox.
 
-=== Step 4: Correct the Cloud-Init Injection & Verify
-Fix the subnet mask injected by Cloud-Init and perform a hard stop/start to apply it.
+==== Step-by-Step Resolution
 
-. In the Web Console, navigate to the *YAML* tab for *vm4*. *(Do not use the Scripts tab, as it may hide network data).*
-. Scroll down to the `spec.template.spec.volumes` section and locate the `cloudInitNoCloud` block.
-. Under `networkData`, change the address line from `/32` to `/24`. *Do not change the dynamically generated IP address itself*, only the mask suffix:
-+
-[source,yaml]
-----
-                  ethernets:
-                    eth1:
-                      addresses:
-                      - 10.10.10.X/24
-----
-. Click *Save*.
-. For Cloud-Init hardware network changes to take effect, a simple reboot is not enough. Click the *Actions* dropdown at the top right and select *Stop*. Wait for it to fully stop, then select *Start*.
-. Once booted, open the *Console* and test the gateway ping again:
+. Patch the `vm-private-net` `NetworkAttachmentDefinition` so `spec.config` points to the `br0` Linux bridge instead of `enp2s0`:
 +
 [source,sh,subs="attributes+"]
 ----
-ping -c 2 10.10.10.1
+oc patch net-attach-def vm-private-net -n {user}-troubleshoot-02 --type='merge' -p '{"spec":{"config":"{\"cniVersion\":\"0.3.1\",\"name\":\"vm-private-net\",\"type\":\"bridge\",\"bridge\":\"br0\",\"ipam\":{}}"}}'
 ----
 
-*Verification Success:* The output will now change to `From 10.10.10.X icmp_seq=1 Destination Host Unreachable`. This error shift proves your Layer 3 routing is completely fixed and the VM successfully pushed the packet out onto the Linux Bridge. It only fails because the gateway itself does not physically exist on this isolated bridge.
+. Verify that the VMI phase successfully transitions to `Running`:
++
+[source,sh,subs="attributes+"]
+----
+oc get vmi vm3 -n {user}-troubleshoot-02
+----
++
+.Terminal output confirming `vm3` is in the `Running` phase
+image::vm3-2-sol.png[Terminal output of oc get vmi vm3 showing Phase as Running and Ready as True, align="center"]
+
+== Solution for Task 2: Troubleshooting Failure Scenario B
+
+==== Guided Investigation & Root Cause Analysis
+
+. Check the high-level operational state of the VM and VMI:
++
+[source,sh,subs="attributes+"]
+----
+oc get vm,vmi vm4 -n {user}-troubleshoot-02
+----
++
+_Observation:_ `vm4` is `Running` with `READY=True` and has an assigned internal IP address.
+
+. Verify that the web server inside the Guest OS is running and listening on port `8080` by connecting to the VM console (`cloud-user` / `password123`):
++
+[source,sh,subs="attributes+"]
+----
+virtctl console vm4 -n {user}-troubleshoot-02
+----
++
+[source,sh]
+----
+curl -s http://localhost:8080
+----
++
+_Observation:_ The local request returns `Hello from vm4 web service!`, confirming the web application inside `vm4` is healthy. Exit the console using `Ctrl+]`.
+
+. Test external access through the OpenShift `Route` (`vm4-web-route`):
++
+[source,sh,subs="attributes+"]
+----
+ROUTE_URL=$(oc get route vm4-web-route -n {user}-troubleshoot-02 -o jsonpath='{.spec.host}')
+curl -i http://$ROUTE_URL
+----
++
+_Observation:_ The router returns `HTTP/1.1 503 Service Unavailable` (`Application is not available`).
+
+. Inspect the `Route`, `Service`, and `Endpoints` objects in the target namespace:
++
+[source,sh,subs="attributes+"]
+----
+oc get route,svc,endpoints -n {user}-troubleshoot-02
+----
++
+_Observation:_ `vm4-web-route` points to `vm4-web-svc`, but the `ENDPOINTS` column for `vm4-web-svc` displays `<none>`.
+
+. Describe the `Service` and check the labels on the `virt-launcher` pod to find why no endpoints are bound:
++
+[source,sh,subs="attributes+"]
+----
+oc describe svc vm4-web-svc -n {user}-troubleshoot-02
+oc get pods -n {user}-troubleshoot-02 --show-labels
+----
++
+_Observation:_ Look closely at the `Selector` field of `vm4-web-svc` (`app=vm4-web`) compared to the `Labels` on the `virt-launcher-vm4` pod (`app=vm4-app`).
++
+.Terminal output showing empty `Endpoints` and mismatched `app` labels
+image::vm4-1-sol.png[Terminal output showing empty Endpoints for vm4-web-svc and app=vm4-app label on pod, align="center"]
+
+. *Root Cause Analysis (RCA):* The `vm4-web-svc` `Service` selects pods with the label `app=vm4-web`, whereas the `virt-launcher-vm4` pod carries the label `app=vm4-app` (inherited from `vm4`'s `spec.template.metadata.labels`). Because the selector does not match any running pod labels, Kubernetes never populates an `Endpoint` IP for `vm4-web-svc`, causing the OpenShift Router to return `503 Service Unavailable`.
+
+==== Step-by-Step Resolution
+
+. Patch `vm4-web-svc` so its label selector matches `app: vm4-app`:
++
+[source,sh,subs="attributes+"]
+----
+oc patch svc vm4-web-svc -n {user}-troubleshoot-02 --type=merge -p '{"spec":{"selector":{"app":"vm4-app"}}}'
+----
+
+. Verify that `vm4-web-svc` now resolves a valid `Endpoint` IP address matching `vm4`:
++
+[source,sh,subs="attributes+"]
+----
+oc get endpoints vm4-web-svc -n {user}-troubleshoot-02
+----
+
+. Re-test external access through `vm4-web-route` to confirm the web page loads successfully:
++
+[source,sh,subs="attributes+"]
+----
+ROUTE_URL=$(oc get route vm4-web-route -n {user}-troubleshoot-02 -o jsonpath='{.spec.host}')
+curl -i http://$ROUTE_URL
+----
++
+.Terminal output confirming `Endpoints` populated and `Route` returning `200 OK`
+image::vm4-2-sol.png[Terminal output showing populated Endpoints and HTTP 200 OK response from vm4-web-route, align="center"]
+
