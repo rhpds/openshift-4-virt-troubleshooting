@@ -118,7 +118,12 @@ image::vm6-2-sol.png[Terminal output of oc get vmim and oc get vmi vm6 showing S
 
 ==== Guided Investigation & Root Cause Analysis
 
-. Verify that `vm7` is in a `Running` state (the `migration-quota` from Task 1 may have previously blocked its initial pod from starting):
+[IMPORTANT]
+====
+Complete Task 1 first. Until `migration-quota` has room for the target pod, the migration is rejected by the quota and the affinity rule below is never exercised.
+====
+
+. Verify that `vm7` is in a `Running` state:
 +
 [source,sh,subs="attributes+"]
 ----

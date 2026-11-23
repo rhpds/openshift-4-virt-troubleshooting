@@ -65,6 +65,11 @@ A Virtual Machine named `vm7` is deployed in the namespace `{user}-troubleshoot-
 
 When attempting to Live Migrate `vm7` (ensure it is in a `Running` state first), the migration request is accepted and enters a `Migrating` state, but it never progresses or moves to another node.
 
+[IMPORTANT]
+====
+Complete Task 1 first. While `migration-quota` is still at its original limit, the migration target pod is rejected by the quota, so the scheduling fault in this task is never exercised.
+====
+
 Run the following commands to initiate a migration and check the pods in your namespace:
 [source,sh,subs="attributes+"]
 ----
