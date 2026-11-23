@@ -65,13 +65,13 @@ _Observation:_ At the bottom of the output, the event log reports a `FailedCreat
 +
 [source,text]
 ----
-Warning  FailedCreate  ...  Error creating pod: pods "virt-launcher-vm6-..." is forbidden: exceeded quota: migration-quota, requested: requests.memory=..., used: ..., limited: 3000Mi
+Warning  FailedCreate  ...  Error creating pod: pods "virt-launcher-vm6-..." is forbidden: exceeded quota: migration-quota, requested: requests.memory=..., used: ..., limited: 3500Mi
 ----
 +
 .Terminal output showing `FailedCreate` warning due to `migration-quota` memory limit
 image::vm6-1-sol.png[Terminal output of oc get events showing FailedCreate exceeded quota migration-quota, align="center"]
 
-. *Root Cause Analysis (RCA):* A live migration requires spinning up a temporary second `virt-launcher` pod on the destination node before transferring memory state. Because the namespace `ResourceQuota` (`migration-quota`) caps total `requests.memory` at `3000Mi`—which `vm6` already consumes—Kubernetes admission control rejects the target pod before it is created, causing the migration to stall indefinitely.
+. *Root Cause Analysis (RCA):* A live migration requires spinning up a temporary second `virt-launcher` pod on the destination node before transferring memory state. Because the namespace `ResourceQuota` (`migration-quota`) caps total `requests.memory` at `3500Mi`—which is already consumes—Kubernetes admission control rejects the target pod before it is created, causing the migration to stall indefinitely.
 
 ==== Step-by-Step Resolution
 
@@ -82,7 +82,7 @@ image::vm6-1-sol.png[Terminal output of oc get events showing FailedCreate excee
 oc describe resourcequota migration-quota -n {user}-troubleshoot-04
 ----
 
-. Increase the `requests.memory` limit by 6Gi (from `3000Mi` to `9Gi`) so the namespace has enough headroom for both VMs and their temporary migration pods:
+. Increase the `requests.memory` limit by 6Gi (from `3500Mi` to 6Gi`) so the namespace has enough headroom for both VMs and their temporary migration pods:
 +
 [source,sh,subs="attributes+"]
 ----
@@ -109,7 +109,7 @@ oc get vmim -n {user}-troubleshoot-04
 oc get vmi vm6 -n {user}-troubleshoot-04
 ----
 +
-_Observation:_ Once the memory quota is increased to `9Gi`, the migration controller creates the target pod and completes the migration without requiring a VM restart. Compare the new `NODENAME` against Step 2 to confirm `vm6` migrated to a different node. (If the migration does not resume automatically, re-run `virtctl migrate vm6 -n {user}-troubleshoot-04`).
+_Observation:_ Once the memory quota is increased to `6Gi`, the migration controller creates the target pod and completes the migration without requiring a VM restart. Compare the new `NODENAME` against Step 2 to confirm `vm6` migrated to a different node. (If the migration does not resume automatically, re-run `virtctl migrate vm6 -n {user}-troubleshoot-04`).
 +
 .Terminal output confirming `vmim` reached `Succeeded` and `vm6` moved to a new node
 image::vm6-2-sol.png[Terminal output of oc get vmim and oc get vmi vm6 showing Succeeded migration on a new node, align="center"]
