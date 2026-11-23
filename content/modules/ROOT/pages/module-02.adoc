@@ -7,8 +7,8 @@ The OpenShift web console is available in the *OCP Console* tab on the right sid
 
 Your login is available with:
 
-- *User:* {user}
-- *Password:* {password}
+* *User:* {user}
+* *Password:* {password}
 
 To access the cluster via the CLI, use the *Terminal* tab on the right side of this screen and run the following login command:
 
@@ -19,115 +19,103 @@ oc login {openshift_api_url} -u {user} -p {password} --insecure-skip-tls-verify
 
 == Overview & Objectives
 
-This lab focuses on diagnosing and resolving advanced networking and scheduling faults within OpenShift Virtualization. By the end of this module, you will:
+This lab focuses on diagnosing and resolving Virtual Machine networking and external exposure issues in OpenShift Virtualization. By the end of this module, you will:
 
-- Identify and resolve Layer 2 Container Network Interface (CNI) attachment failures.
-- Correct pod scheduling errors caused by invalid hardware resource requests.
-- Troubleshoot and fix Layer 3 routing anomalies injected via Cloud-Init.
+* Troubleshoot secondary network attachment failures involving CNI and Multus `NetworkAttachmentDefinition` objects.
+* Diagnose and repair external HTTP routing failures (`Route` → `Service` → `Pod`) for applications hosted inside a Virtual Machine.
 
 [NOTE]
 ====
-This lab is designed to give you hands-on experience with real-world scenarios. We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issues on your own first—that is where the best learning happens! 
+This lab is designed to give you hands-on experience with real-world scenarios. We highly recommend exploring the errors, running the diagnostic commands, and trying to fix the issues on your own first—that is where the best learning happens!
 
 If you get stuck or want to verify your findings, the companion *Guided Solution* is always available to help guide you through the next steps.
 ====
 
 == Tasks
 
-=== Task 1: Troubleshooting CNI and Network Attachment (Layer 2 Fault)
+=== Task 1: Troubleshooting Failure Scenario A
 
 ==== Problem Scenario
-A Virtual Machine named `vm3` is deployed in the namespace `{user}-troubleshoot-02` but fails to start. 
+A Virtual Machine named `vm3` is configured with a secondary network interface in the namespace `{user}-troubleshoot-02`.
 
-The VM's underlying orchestration pod is unable to initialize because it cannot bind to the requested secondary network. A configuration error in the cluster's network attachment definition is causing a physical hardware collision.
+When attempting to start `vm3`, the Virtual Machine never reaches a `Running` state and remains stuck during pod initialization.
 
-Run the following command to verify the current non-running state of `vm3`:
+Run the following commands to verify the current non-running state of `vm3`:
 [source,sh,subs="attributes+"]
 ----
-oc get vm vm3 -n {user}-troubleshoot-02
-----
-
-The output should look similar to this:
-
-.Terminal output confirming `vm3` is failing to start
-image::vm3-1.png[Terminal output of oc get vm vm3 showing non-running state, align="center"]
-
-==== Reference Documentation & Setup
-- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/networking#virt-connecting-vm-to-linux-bridge[Connecting a virtual machine to a Linux bridge network^].
-- The VM relies on a custom NetworkAttachmentDefinition named `vm-private-net`.
-
-==== Goal
-Investigate the cluster's network definitions to determine why the secondary network attachment is failing. Modify the definition to use the correct Linux bridge topology so that `vm3` can successfully transition to a `Running` state.
-
-=== Task 2: Troubleshooting Scheduling and Layer 3 Routing (Double Fault)
-
-==== Problem Scenario
-A second Virtual Machine named `vm4` is deployed in the same namespace but remains stuck in a `Pending` state. The scheduler refuses to assign the workload to a node due to a mismatch in the requested network interface hardware.
-
-Furthermore, once the hardware request is corrected and the VM boots, it still lacks network connectivity. An error in the Cloud-Init configuration has injected a mathematically isolated subnet mask into the Guest OS, preventing traffic routing.
-
-Run the following command to verify the current non-running state of `vm4`:
-[source,sh,subs="attributes+"]
-----
-oc get vm vm4 -n {user}-troubleshoot-02
-----
-
-The output should look similar to this:
-
-.Terminal output confirming `vm4` is failing to start
-image::vm4-1.png[Terminal output of oc get vm vm4 showing non-running status, align="center"]
-
-==== Reference Documentation & Setup
-- Consult the Red Hat documentation on link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/networking#virt-connecting-vm-to-sriov[Connecting a virtual machine to an SR-IOV network^].
-- Review Cloud-Init network configuration best practices for static IP injection.
-
-==== Goal
-Diagnose the scheduling error on `vm4` and correct the interface hardware binding in the YAML spec. After the VM boots, access the Guest OS, identify the improper subnet mask scoped to the secondary network interface, and update the Cloud-Init script to apply the correct `/24` subnet mask without altering the dynamically generated IP.
-
-== Suggested Troubleshooting Reference Workflow
-
-Use the following commands to navigate the cluster objects, inspect network definitions, and verify the Guest OS configuration.
-
-Check the high-level VM and VMI states in your namespace:
-[source,sh,subs="attributes+"]
-----
-oc get vm -n {user}-troubleshoot-02
-oc get vmi -n {user}-troubleshoot-02
-----
-
-Identify the underlying virt-launcher pods:
-[source,sh,subs="attributes+"]
-----
+oc get vm,vmi vm3 -n {user}-troubleshoot-02
 oc get pods -n {user}-troubleshoot-02
 ----
 
-Describe a specific virt-launcher pod to uncover scheduling or CNI initialization errors (replace `<virt-launcher-pod>` with the target pod name):
+The terminal output should look similar to this:
+
+.Terminal output confirming `vm3` is stuck during startup
+image::vm3-1.png[Terminal output of oc get vm,vmi and pods showing vm3 stuck before Running, align="center"]
+
+==== Reference Documentation
+* Consult the Red Hat documentation on link:https://redhat.com[Attaching a virtual machine to a Linux bridge network^].
+
+==== Goal
+Investigate the cluster components and network attachment configuration, determine why the secondary interface cannot initialize, implement a fix, and transition `vm3` to a `Running` state.
+
+=== Task 2: Troubleshooting Failure Scenario B
+
+==== Problem Scenario
+A Virtual Machine named `vm4` is deployed in the namespace `{user}-troubleshoot-02` and runs a web server exposed externally via an OpenShift `Route` (`vm4-web-route`)
+
+Although `vm4` reports a `Running` state, users attempting to access the application through the `Route` URL receive a `503 Service Unavailable` (`Application is not available`) response.
+
+Run the following commands to verify that `vm4` is running and test external HTTP access via `vm4-web-route`:
+[source,sh,subs="attributes+"]
+----
+oc get vm,vmi vm4 -n {user}-troubleshoot-02
+ROUTE_URL=$(oc get route vm4-web-route -n {user}-troubleshoot-02 -o jsonpath='{.spec.host}')
+curl -i http://$ROUTE_URL
+----
+
+The terminal output should look similar to this:
+
+.Terminal output showing `vm4` is `Running` while `curl` to `vm4-web-route` returns `503 Service Unavailable`
+image::vm4-1.png[Terminal output showing vm4 Running and curl returning 503 Application is not available, align="center"]
+
+==== Reference Documentation
+* Consult the Red Hat documentation on link:https://redhat.com[Exposing a virtual machine by using a Service^].
+
+==== Goal
+Trace the routing chain (`Route` → `Service` → `Endpoints` → `Pod`), pinpoint why traffic is not reaching `vm4`, implement a fix, and verify that `curl http://$ROUTE_URL` returns the web page hosted on `vm4`.
+
+== Suggested Troubleshooting Reference Workflow
+
+Use the following commands in sequence to analyze the state of either Virtual Machine (`vm3` or `vm4`) and isolate the root cause of the networking failures:
+
+Check high-level VM and VMI states:
+[source,sh,subs="attributes+"]
+----
+oc get vm,vmi -n {user}-troubleshoot-02
+----
+
+Locate underlying `virt-launcher` pods and inspect their labels:
+[source,sh,subs="attributes+"]
+----
+oc get pods -n {user}-troubleshoot-02 --show-labels
+----
+
+Describe a `virt-launcher` pod to view CNI and sandbox events (replace `<virt-launcher-pod>` with the pod ID found above):
 [source,sh,subs="attributes+"]
 ----
 oc describe pod <virt-launcher-pod> -n {user}-troubleshoot-02
 ----
 
-Inspect the custom NetworkAttachmentDefinition causing the Layer 2 fault:
+Inspect `NetworkAttachmentDefinition` objects in the namespace:
 [source,sh,subs="attributes+"]
 ----
-oc get net-attach-def -n {user}-troubleshoot-02
-oc describe net-attach-def vm-private-net -n {user}-troubleshoot-02
+oc get net-attach-def -n {user}-troubleshoot-02 -o yaml
 ----
 
-Review and edit the VM configuration to fix hardware binding errors:
+Inspect `Route`, `Service`, and `Endpoints` objects to trace external traffic routing:
 [source,sh,subs="attributes+"]
 ----
-oc get vm vm4 -o yaml -n {user}-troubleshoot-02
+oc get route,svc,endpoints -n {user}-troubleshoot-02
+oc describe svc vm4-web-svc -n {user}-troubleshoot-02
 ----
 
-Access the Guest OS console once a VM is running (Username: `cloud-user` / Password: `password123`):
-[source,sh,subs="attributes+"]
-----
-virtctl console vm4 -n {user}-troubleshoot-02
-----
-
-Verify the network configuration applied by Cloud-Init inside the Guest OS:
-[source,sh,subs="attributes+"]
-----
-ip a show eth1
-----
